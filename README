@@ -20,6 +20,10 @@ or how about this:
                             #  after creating a label named 'ftp' and
                             #  applying it to some messages with attachments.)
 
+or maybe this:
+
+  python demos/gmailpopd.py # (Then connect to POP3 proxy on local port 8110)
+
 for hours of fun!(*)
 
 (*) Note: Fun may not last for hours. Use at your own risk, blah, blah, etc...

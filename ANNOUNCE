@@ -1,4 +1,4 @@
-ANN: libgmail 0.0.7 - Gmail access via Python - Now with FTP Proxy!
+ANN: libgmail 0.0.8 - Gmail access via Python - POP3 Proxy added!
 
 libgmail -- Python binding for Google's Gmail service
 
@@ -15,37 +15,33 @@ Also includes a demonstration utility that acts as a SMTP proxy to
 allow mail to be sent from any standard mail client that uses SMTP
 (e.g. Mail.app, Mozilla etc). (Now handles attachments.)
 
-New demonstration utility to provide access to Gmail message
+New demonstration utility acts as a POP3 proxy to allow mail to be
+retrieved from any standard mail client that uses POP3 (e.g. Mail.app,
+Mozilla etc).
+
+Features demonstration utility to provide access to Gmail message
 attachments via a download-only FTP proxy--this allows retrieval of
 suitably marked attachments by a standard FTP client. Utilize more
 of your Gmail space!
 
-License: GPL 2.0 (gmailftpd.py is dual licensed with PSF)
+License: GPL 2.0 (gmailftpd.py/gmailpopd.py are dual licensed with PSF)
 
-Major changes since 0.0.6:
+Major changes since 0.0.7:
 
- * Demo FTP proxy enables marked Gmail message attachments to be
-   download via FTP.
+ *  Fixed login to work again after it was broken by a Gmail change.
 
- * Implemented sending & receiving of message attachments. 
+ *  Added trash/delete message thread & trash/delete single message
+    functionality. (By request.)
 
- * Updated SMTP Proxy demo to handle sending attachments.
+ *  POP3 proxy server demo. (By request.)
 
- * Added 'getMessagesByQuery' function.
-
-Major changes since 0.0.5: (Repeated from last announcement)
-
- * Implemented SMTP proxy to enable Gmail to be send with a
-    standard mail client via (E)SMTP. 
-
- * Extended standard SMTP class to handle ESMTP EHLO & AUTH PLAIN commands.
-
- * Utility function '_retrieveJavascript' to retrieve current version
-   of Gmail Javascript file. (By request.)
+ *  Added `GmailLoginFailure` exception to enable tidier handling of
+    login failures (which could be bad username/password or a Gmail
+    change).
 
 
-<p><a href="http://libgmail.sf.net/">libgmail 0.0.7</a> - The
+<p><a href="http://libgmail.sf.net/">libgmail 0.0.8</a> - The
 `libgmail` project is a pure Python binding to provide access to
-Google's Gmail web-mail service; includes SMTP & FTP
-proxies. (03-Aug-04)</p>
+Google's Gmail web-mail service; includes SMTP, POP3 & FTP
+proxies. (23-Aug-04)</p>
 

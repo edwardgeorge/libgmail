@@ -1,3 +1,45 @@
+== Version: 0.0.8 (23 August 2004) ==
+libgmail.py
+ *  Fixed login to work again after it was broken by a Gmail change.
+    Centralised cookie extraction. Added debug-level logging of cookie
+    extraction & storage.
+
+ *  Add trash/delete message thread functionality to account object.
+
+constants.py, libgmail.py, mkconstants.py
+ *  Add trash/delete single message functionality to account object.
+
+demos/gmailpopd.py
+ *  Initial rough POP3 proxy server demo. Works with Mail.app when I
+    tried it... :-) Sometimes causes items to be downloaded even when
+    they don't *really* need to be. Causes some items to be marked as
+    read even if the client doesn't actually request them.
+
+ *  Refactored message retrieval from account snapshot to allow
+    partial message retrieval (for TOP functionality).
+
+ *  Added POP3 TOP command functionality which is required by Mozilla as it
+    (wrongly) doesn't work with the absolute minimum command set
+    specified by the RFC and requires TOP.
+
+ *  Fixed copy/paste error to change 'ftp_QUIT' to 'pop_QUIT'.
+
+ *  Moved byte-stuffing and message massaging into separate functions.
+
+libgmail.py, demos/archive.py, demos/gmailftpd.py, demos/gmailpopd.py, demos/gmailsmtp.py, demos/sendmsg.py
+ *  Added `GmailLoginFailure` exception to enable tidier handling of
+    login failures (which could be bad username/password or a Gmail
+    change).
+
+ *  Updated demos to catch `GmailLoginFailure` exception.
+
+ *  Removed non-supported "LOGIN" authentication method in SMTP demo
+    that was included in the server capability response in error.
+
+ANNOUNCE
+ *  Minor typo fix.
+
+
 == Version: 0.0.7 (03 August 2004) ==
 
 constants.py, mkconstants.py
