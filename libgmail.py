@@ -439,11 +439,8 @@ class GmailAccount:
         return items[D_THREADLIST_SUMMARY][TS_TOTAL_MSGS]
 
 
-    def sendMessage(self, msg):
+    def _getActionToken(self):
         """
-
-          `msg` -- `GmailComposedMessage` instance.
-        
         """
         try:
             at = self._cookieJar._cookies[ACTION_TOKEN_COOKIE]
@@ -451,12 +448,21 @@ class GmailAccount:
             self.getLabelNames(True) 
             at = self._cookieJar._cookies[ACTION_TOKEN_COOKIE]           
 
+        return at
+
+
+    def sendMessage(self, msg):
+        """
+
+          `msg` -- `GmailComposedMessage` instance.
+        
+        """
         params = {U_VIEW: U_SENDMAIL_VIEW,
                   U_REFERENCED_MSG: "",
                   U_THREAD: "",
                   U_DRAFT_MSG: "",
                   U_COMPOSEID: "1",
-                  U_ACTION_TOKEN: at,
+                  U_ACTION_TOKEN: self._getActionToken(),
                   U_COMPOSE_TO: msg.to,
                   U_COMPOSE_CC: msg.cc,
                   U_COMPOSE_BCC: msg.bcc,
@@ -512,6 +518,23 @@ class GmailAccount:
 
         # TODO: Check composeid & store new thread id?
         return (items[D_SENDMAIL_RESULT][SM_SUCCESS] == 1)
+
+
+    def trashMessage(self, msg):
+        """
+        """
+        # TODO: Decide if we should make this a method of `GmailMessage`.
+        # TODO: Should we check we have been given a `GmailMessage` instance?
+        params = {
+            U_ACTION: U_DELETEMESSAGE_ACTION,
+            U_ACTION_MESSAGE: msg.id,
+            U_ACTION_TOKEN: self._getActionToken(),
+            }
+
+        items = self._parsePage(_buildURL(**params))
+
+        return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
+        
 
         
 
