@@ -2,7 +2,7 @@
 #
 # libgmail -- Gmail access via Python
 #
-# Version: 0.0.8 (23 August 2004)
+# Version: 0.0.9 (XX October 2004)
 #
 # Author: follower@myrealbox.com
 #
@@ -576,6 +576,67 @@ class GmailAccount:
         items = self._parsePage(_buildURL(**params))
 
         # TODO: Mark as trashed on success?
+        return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
+
+
+    def _createUpdateRequest(self, actionId): #extraData):
+        """
+        Helper method to create a Request instance for an update (view)
+        action.
+
+        Returns populated `Request` instance.
+        """
+        params = {
+            U_VIEW: U_UPDATE_VIEW,
+            }
+
+        data = {
+            U_ACTION: actionId,
+            U_ACTION_TOKEN: self._getActionToken(),
+            }
+
+        #data.update(extraData)
+
+        req = urllib2.Request(_buildURL(**params),
+                              data = urllib.urlencode(data))
+
+        return req
+
+
+    # TODO: Extract addititonal common code from handling of labels?
+    def createLabel(self, labelName):
+        """
+        """
+        req = self._createUpdateRequest(U_CREATECATEGORY_ACTION + labelName)
+
+        # Note: Label name cache is updated by this call as well. (Handy!)
+        items = self._parsePage(req)
+
+        return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
+
+
+    def deleteLabel(self, labelName):
+        """
+        """
+        # TODO: Check labelName exits?
+        req = self._createUpdateRequest(U_DELETECATEGORY_ACTION + labelName)
+
+        # Note: Label name cache is updated by this call as well. (Handy!)
+        items = self._parsePage(req)
+
+        return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
+
+
+    def renameLabel(self, oldLabelName, newLabelName):
+        """
+        """
+        # TODO: Check oldLabelName exits?
+        req = self._createUpdateRequest("%s%s^%s" % (U_RENAMECATEGORY_ACTION,
+                                                   oldLabelName, newLabelName))
+
+        # Note: Label name cache is updated by this call as well. (Handy!)
+        items = self._parsePage(req)
+
         return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
 
         
