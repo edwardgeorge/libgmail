@@ -11,6 +11,10 @@
 # This tool parses the Javascript file used by Gmail, extracts
 # useful constants and then generates an importable Python module.
 #
+# 2004-07-11: Hmmm, this script is not really any use now because
+#             Gmail no longer includes the constants definitions
+#             in the Javascript...
+#
 
 import re
 import sys
