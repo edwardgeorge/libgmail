@@ -40,6 +40,8 @@ from email.MIMEBase import MIMEBase
 from email.MIMEText import MIMEText
 from email.MIMEMultipart import MIMEMultipart
 
+#logging.getLogger().setLevel(logging.DEBUG)
+
 URL_LOGIN = "https://www.google.com/accounts/ServiceLoginBoxAuth"
 URL_GMAIL = "https://gmail.google.com/gmail"
 
@@ -50,25 +52,6 @@ STANDARD_FOLDERS = [U_INBOX_SEARCH, U_STARRED_SEARCH,
 
 versionWarned = False # If the Javascript version is different have we
                       # warned about it?
-
-RE_COOKIE_VAL = 'cookieVal=\W*"(.+)"'
-def _extractGV(pageData):
-    """
-
-    var cookieVal= "xxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
-
-    `pageData` -- HTML page with Javascript to set cookie value.
-    """
-    gv = None
-    
-    try:
-        gv = re.search(RE_COOKIE_VAL, pageData).group(1)
-    except AttributeError:
-        print "Error: Couldn't extract GV cookie."
-        raise SystemExit
-
-    return gv
-
 
 
 RE_SPLIT_PAGE_CONTENT = re.compile("D\((.*?)\);", re.DOTALL)
@@ -152,8 +135,11 @@ class CookieJar:
         # TODO: Do this all more nicely?
         for cookie in response.headers.getheaders('Set-Cookie'):
             name, value = (cookie.split("=", 1) + [""])[:2]
+            logging.debug("Extracted cookie `%s`" % (name))
             if not nameFilter or name in nameFilter:
                 self._cookies[name] = value.split(";")[0]
+                logging.debug("Stored cookie `%s` value `%s`" %
+                              (name, self._cookies[name]))
 
 
     def addCookie(self, name, value):
@@ -260,15 +246,18 @@ class GmailAccount:
                    'User-Agent': 'User-Agent: Mozilla/5.0 (compatible;)'}
 
         req = urllib2.Request(URL_LOGIN, data=data, headers=headers)
-        resp = urllib2.urlopen(req)
+        pageData = self._retrievePage(req)
 
-        self._cookieJar.extractCookies(resp, ["SID"])
+        # TODO: Tidy this up?
+        # This requests the page that provides the required "GV" cookie.
+        RE_PAGE_REDIRECT = 'top\.location\W=\W"CheckCookie\?continue=([^"]+)'
+        # TODO: Catch failure exception here...
+        redirectURL = urllib.unquote(re.search(RE_PAGE_REDIRECT,
+                                               pageData).group(1))
+        # We aren't concerned with the actual content of this page,
+        # just the cookie that is returned with it.
+        pageData = self._retrievePage(redirectURL)
         
-        pageData = resp.read()
-        gv = _extractGV(pageData)
-
-        self._cookieJar.addCookie("GV", gv)
-
 
     def _retrievePage(self, urlOrRequest):
         """
@@ -283,8 +272,11 @@ class GmailAccount:
 
         pageData = resp.read()
 
-        # TODO: Do extract cookies here too?
-        self._cookieJar.extractCookies(resp, [ACTION_TOKEN_COOKIE])
+        # Extract cookies here
+        # NOTE: "SID" & "GV" really only need to be extracted once
+        #       as they don't seem to change during session.
+        self._cookieJar.extractCookies(resp, [ACTION_TOKEN_COOKIE,
+                                              "SID", "GV"])
 
         # TODO: Enable logging of page data for debugging purposes?
 
