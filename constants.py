@@ -5,7 +5,7 @@
 #
 # Source version: 44f09303f2d4f76f
 #
-# Generated: 2004-07-10 19:46 UTC
+# Generated: 2004-07-10 20:29 UTC
 #
 
 js_version = '44f09303f2d4f76f'
@@ -91,6 +91,25 @@ MI_KNOWNAUTHOR = 17
 MI_PHISHWARNING = 18
 CT_NAME = 0
 CT_COUNT = 1
+U_VIEW = "view"
+U_PAGE_VIEW = "page"
+U_THREADLIST_VIEW = "tl"
+U_CONVERSATION_VIEW = "cv"
+U_COMPOSE_VIEW = "cm"
+U_PRINT_VIEW = "pt"
+U_PREFERENCES_VIEW = "pr"
+U_JSREPORT_VIEW = "jr"
+U_UPDATE_VIEW = "up"
+U_SENDMAIL_VIEW = "sm"
+U_AD_VIEW = "ad"
+U_REPORT_BAD_RELATED_INFO_VIEW = "rbri"
+U_ADDRESS_VIEW = "address"
+U_ADDRESS_IMPORT_VIEW = "ai"
+U_SPELLCHECK_VIEW = "sc"
+U_INVITE_VIEW = "invite"
+U_ORIGINAL_MESSAGE_VIEW = "om"
+U_ATTACHMENT_VIEW = "att"
+U_DEBUG_ADS_RESPONSE_VIEW = "da"
 U_SEARCH = "search"
 U_INBOX_SEARCH = "inbox"
 U_STARRED_SEARCH = "starred"
@@ -103,3 +122,24 @@ U_QUERY_SEARCH = "query"
 U_ADVANCED_SEARCH = "adv"
 U_CREATEFILTER_SEARCH = "cf"
 U_CATEGORY_SEARCH = "cat"
+U_AS_FROM = "as_from"
+U_AS_TO = "as_to"
+U_AS_SUBJECT = "as_subj"
+U_AS_SUBSET = "as_subset"
+U_AS_HAS = "as_has"
+U_AS_HASNOT = "as_hasnot"
+U_AS_ATTACH = "as_attach"
+U_AS_WITHIN = "as_within"
+U_AS_DATE = "as_date"
+U_AS_SUBSET_ALL = "all"
+U_AS_SUBSET_INBOX = "inbox"
+U_AS_SUBSET_STARRED = "starred"
+U_AS_SUBSET_SENT = "sent"
+U_AS_SUBSET_DRAFTS = "drafts"
+U_AS_SUBSET_SPAM = "spam"
+U_AS_SUBSET_TRASH = "trash"
+U_AS_SUBSET_ALLSPAMTRASH = "ast"
+U_AS_SUBSET_READ = "read"
+U_AS_SUBSET_UNREAD = "unread"
+U_AS_SUBSET_CATEGORY_PREFIX = "cat_"
+U_START = "start"
