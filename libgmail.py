@@ -227,21 +227,30 @@ class GmailAccount:
     """
     """
 
-    def __init__(self, name, pw):
+    def __init__(self, name = "", pw = "", state = None):
         """
         """
-        self.name = name
-        self._pw = pw
+        # TODO: Change how all this is handled?
+        if name and pw:
+            self.name = name
+            self._pw = pw
+            self._cookieJar = CookieJar()
+        elif state:
+            # TODO: Check for stale state cookies?
+            self.name, self._cookieJar = state.state
+        else:
+            raise ValueError("GmailAccount must be instantiated with " \
+                             "either GmailSessionState object or name " \
+                             "and password.")
 
         self._cachedQuotaInfo = None
         self._cachedLabelNames = None
         
-        self._cookieJar = CookieJar()
-
 
     def login(self):
         """
         """
+        # TODO: Throw exception if we were instantiated with state?
         data = urllib.urlencode({'continue': URL_GMAIL,
                                  'service': 'mail',
                                  'Email': self.name,
@@ -613,6 +622,29 @@ class GmailSearchResult:
         return len(self._threads)
 
 
+from cPickle import load, dump
+
+class GmailSessionState:
+    """
+    """
+
+    def __init__(self, account = None, filename = ""):
+        """
+        """
+        if account:
+            self.state = (account.name, account._cookieJar)
+        elif filename:
+            self.state = load(open(filename, "rb"))
+        else:
+            raise ValueError("GmailSessionState must be instantiated with " \
+                             "either GmailAccount object or filename.")
+
+
+    def save(self, filename):
+        """
+        """
+        dump(self.state, open(filename, "wb"), -1)
+
 
 class GmailThread:
     """
@@ -636,8 +668,8 @@ class GmailThread:
         self.id = threadInfo[T_THREADID] # TODO: Change when canonical updated?
         self.subject = threadInfo[T_SUBJECT_HTML]
 
-        self.summary = threadInfo[T_SNIPPET_HTML]
-        self.extraSummary = threadInfo[T_EXTRA_SNIPPET] #TODO: What is this?
+        self.snippet = threadInfo[T_SNIPPET_HTML]
+        #self.extraSummary = threadInfo[T_EXTRA_SNIPPET] #TODO: What is this?
 
         # TODO: Store other info?
         # Extract number of messages in thread/conversation.
