@@ -398,9 +398,14 @@ class GmailMessage(object):
 
 FOLDER_NAMES = ['all', FOLDER_INBOX, FOLDER_SENT] # TODO: Get these on the fly.
 if __name__ == "__main__":
+    import sys
     from getpass import getpass
-    
-    name = raw_input("Gmail account name: ")
+
+    try:
+        name = sys.argv[1]
+    except IndexError:
+        name = raw_input("Gmail account name: ")
+        
     pw = getpass("Password: ")
 
     ga = GmailAccount(name, pw)
