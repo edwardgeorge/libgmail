@@ -232,7 +232,7 @@ class GmailAccount:
         return items
 
 
-    def getFolder(self, folderName):
+    def getFolder(self, folderName, allPages = False):
         """
 
         Folders contain conversation/message threads.
@@ -241,13 +241,29 @@ class GmailAccount:
 
         Returns a `GmailFolder` instance.
         """
-        URL_FOLDER_BASE = "https://gmail.google.com/gmail?search=%s&view=tl"
+        URL_FOLDER_BASE = "https://gmail.google.com/gmail?search=%s&start=%s&view=tl"
 
-        items = self._parsePage(URL_FOLDER_BASE % folderName)
+        start = 0
 
-        # TODO: Option to get *all* threads if multiple pages are used.
+        items = self._parsePage(URL_FOLDER_BASE % (folderName, start))
 
-        return GmailFolder(self, folderName, items[D_THREAD])
+        # Note: This also handles when more than one "t" datapack is on a page.
+        threadsInfo = _splitBunches(items[D_THREAD])
+
+        # Option to get *all* threads if multiple pages are used.
+        if allPages:
+            threadListSummary = items[D_THREADLIST_SUMMARY]
+            threadsPerPage = threadListSummary[TS_NUM]
+            while len(threadsInfo) < threadListSummary[TS_TOTAL]:
+                # There's more than one page of results...
+                start += threadsPerPage
+
+                items = self._parsePage(URL_FOLDER_BASE % (folderName, start))
+                threadsInfo.extend(_splitBunches(items[D_THREAD]))
+
+                # TODO: Check if the total has changed?
+                
+        return GmailFolder(self, folderName, threadsInfo)
 
     
     def getQuotaInfo(self):
@@ -310,14 +326,10 @@ class GmailFolder:
     def __init__(self, account, folderName, threadsInfo):
         """
 
-          `threadsInfo` -- As returned from Gmail.
+          `threadsInfo` -- As returned from Gmail but unbunched.
         """
         self._account = account
         self.folderName = folderName
-
-        # TODO: Handle all this properly...
-        # This happens when more than one "t" datapack is on a page.
-        threadsInfo = _splitBunches(threadsInfo)
 
         self._threads = [GmailThread(self, thread)
                          for thread in threadsInfo]
@@ -477,7 +489,7 @@ if __name__ == "__main__":
 
             folderName = FOLDER_NAMES[int(raw_input("Choice: "))]
 
-            folder = ga.getFolder(folderName)
+            folder = ga.getFolder(folderName, True)
 
             print
             for thread in folder:

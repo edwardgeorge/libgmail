@@ -50,13 +50,13 @@ if __name__ == "__main__":
     while 1:
         try:
             print "Select folder to archive: (Ctrl-C to exit)"
-            print "Note: Only first page of results will be archived."
+            print "Note: *All* pages of results will be archived."
             for optionId, folderName in enumerate(FOLDER_NAMES):
                 print "  %d. %s" % (optionId, folderName)
 
             folderName = FOLDER_NAMES[int(raw_input("Choice: "))]
 
-            folder = ga.getFolder(folderName)
+            folder = ga.getFolder(folderName, True)
 
             print
             mbox = []
