@@ -478,6 +478,9 @@ class GmailAccount:
 
           `msg` -- `GmailComposedMessage` instance.
         
+        Note: Now returns `GmailMessageStub` instance with populated
+              `id` (and `_account`) fields on success or None on failure.
+
         """
         # TODO: Handle drafts separately?
         params = {U_VIEW: [U_SENDMAIL_VIEW, U_SAVEDRAFT_VIEW][asDraft],
@@ -539,8 +542,15 @@ class GmailAccount:
 
         items = self._parsePage(req)
 
-        # TODO: Check composeid & store new thread id?
-        return (items[D_SENDMAIL_RESULT][SM_SUCCESS] == 1)
+        # TODO: Check composeid?
+        result = None
+        resultInfo = items[D_SENDMAIL_RESULT]
+        
+        if resultInfo[SM_SUCCESS]:
+            result = GmailMessageStub(id = resultInfo[SM_NEWTHREADID],
+                                      _account = self)
+            
+        return result
 
 
     def trashMessage(self, msg):
@@ -723,8 +733,37 @@ class GmailSessionState:
         dump(self.state, open(filename, "wb"), -1)
 
 
+class _LabelHandlerMixin(object):
+    """
 
-class GmailThread:
+    Note: Because a message id can be used as a thread id this works for
+          messages as well as threads.
+    """
+
+    def addLabel(self, labelName):
+        """
+        """
+        # Note: It appears this also automatically creates new labels.
+        result = self._account._doThreadAction(U_ADDCATEGORY_ACTION+labelName,
+                                               self)
+        # TODO: Update list of attached labels?
+        return result
+
+
+    def removeLabel(self, labelName):
+        """
+        """
+        # TODO: Check label is already attached?
+        # Note: An error is not generated if the label is not already attached.
+        result = \
+               self._account._doThreadAction(U_REMOVECATEGORY_ACTION+labelName,
+                                             self)
+        # TODO: Update list of attached labels?
+        return result
+    
+
+
+class GmailThread(_LabelHandlerMixin):
     """
 
 
@@ -805,26 +844,25 @@ class GmailThread:
 
     # TODO: Add property to retrieve list of labels for this message.
     
-    def addLabel(self, labelName):
-        """
-        """
-        # Note: It appears this also automatically creates new labels.
-        result = self._account._doThreadAction(U_ADDCATEGORY_ACTION+labelName,
-                                               self)
-        # TODO: Update list of attached labels?
-        return result
 
 
-    def removeLabel(self, labelName):
+class GmailMessageStub(_LabelHandlerMixin):
+    """
+
+    Intended to be used where not all message information is known/required.
+
+    NOTE: This may go away.
+    """
+
+    # TODO: Provide way to convert this to a full `GmailMessage` instance
+    #       or allow `GmailMessage` to be created without all info?
+
+    def __init__(self, id = None, _account = None):
         """
         """
-        # TODO: Check label is already attached?
-        # Note: An error is not generated if the label is not already attached.
-        result = \
-               self._account._doThreadAction(U_REMOVECATEGORY_ACTION+labelName,
-                                             self)
-        # TODO: Update list of attached labels?
-        return result
+        self.id = id
+        self._account = _account
+    
 
         
 class GmailMessage(object):
