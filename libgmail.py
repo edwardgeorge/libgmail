@@ -30,6 +30,7 @@
 
 from constants import *
 
+import os
 import re
 import urllib
 import urllib2
@@ -53,6 +54,10 @@ STANDARD_FOLDERS = [U_INBOX_SEARCH, U_STARRED_SEARCH,
 # Constants with names not from the Gmail Javascript:
 # TODO: Move to `constants.py`?
 U_SAVEDRAFT_VIEW = "sd"
+
+D_DRAFTINFO = "di"
+# NOTE: All other DI_* field offsets seem to match the MI_* field offsets
+DI_BODY = 19
 
 versionWarned = False # If the Javascript version is different have we
                       # warned about it?
@@ -624,7 +629,7 @@ class GmailAccount:
         return req
 
 
-    # TODO: Extract addititonal common code from handling of labels?
+    # TODO: Extract additional common code from handling of labels?
     def createLabel(self, labelName):
         """
         """
@@ -660,8 +665,29 @@ class GmailAccount:
 
         return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
 
-        
 
+    def storeFile(self, filename, label = None):
+        """
+        """
+        # TODO: Handle files larger than single attachment size.
+        # TODO: Allow file data objects to be supplied?
+        FILE_STORE_VERSION = "FSV_01"
+        FILE_STORE_SUBJECT_TEMPLATE = "%s %s" % (FILE_STORE_VERSION, "%s")
+
+        subject = FILE_STORE_SUBJECT_TEMPLATE % os.path.basename(filename)
+
+        msg = GmailComposedMessage(to="", subject=subject, body="",
+                                   filenames=[filename])
+
+        draftMsg = self.sendMessage(msg, asDraft = True)
+
+        if draftMsg and label:
+            draftMsg.addLabel(label)
+
+        return draftMsg
+
+        
+        
 def _splitBunches(infoItems):
     """
 
@@ -831,15 +857,24 @@ class GmailThread(_LabelHandlerMixin):
                                                  th = thread.id,
                                                  q = "in:anywhere")
 
+        result = []
         # TODO: Handle this better?
-        msgsInfo = items[D_MSGINFO]
+        # Note: This handles both draft & non-draft messages in a thread...
+        for key, isDraft in [(D_MSGINFO, False), (D_DRAFTINFO, True)]:
+            try:
+                msgsInfo = items[key]
+            except KeyError:
+                # No messages of this type (e.g. draft or non-draft)
+                continue
+            else:
+                # TODO: Handle special case of only 1 message in thread better?
+                if type(msgsInfo) != type([]):
+                    msgsInfo = [msgsInfo]
 
-        # TODO: Handle special case of only one message in thread better?
-        if type(msgsInfo) != type([]):
-            msgsInfo = [msgsInfo]
+                result += [GmailMessage(thread, msg, isDraft = isDraft)
+                           for msg in msgsInfo]
 
-        return [GmailMessage(thread, msg)
-                for msg in msgsInfo]
+        return result
 
 
     # TODO: Add property to retrieve list of labels for this message.
@@ -869,9 +904,12 @@ class GmailMessage(object):
     """
     """
     
-    def __init__(self, parent, msgData):
+    def __init__(self, parent, msgData, isDraft = False):
         """
+
+        Note: `msgData` can be from either D_MSGINFO or D_DRAFTINFO.
         """
+        # TODO: Automatically detect if it's a draft or not?
         # TODO Handle this better?
         self._parent = parent
         self._account = self._parent._account
@@ -885,6 +923,9 @@ class GmailMessage(object):
 
         # TODO: Populate additional fields & cache...(?)
 
+        # TODO: Handle body differently if it's from a draft?
+        self.isDraft = isDraft
+        
         self._source = None
 
 
