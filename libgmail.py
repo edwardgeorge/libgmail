@@ -269,6 +269,15 @@ class GmailAccount:
         return pageData
 
 
+    def getUnreadMsgCount(self):
+        """
+        """
+        URL_QUERY_UNREAD = "https://gmail.google.com/gmail?search=query&q=is%3Aunread&view=tl"
+
+        items = self._parsePage(URL_QUERY_UNREAD)
+
+        return items[D_THREADLIST_SUMMARY][TS_TOTAL_MSGS]
+
 
 class GmailFolder:
     """
