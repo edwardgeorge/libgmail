@@ -25,7 +25,7 @@ import asyncore
 import asynchat
 
 program = sys.argv[0]
-__version__ = 'Python Gmail FTP proxy version 0.0.1'
+__version__ = 'Python Gmail FTP proxy version 0.0.2'
 
 # Allow us to run using installed `libgmail` or the one in parent directory.
 try:
@@ -49,10 +49,11 @@ DEBUGSTREAM = Devnull()
 NEWLINE = '\n'
 EMPTYSTRING = ''
 
-
+# TODO: Don't make these globals..
 nextPort = 9021
 my_cwd = ""
 my_user = ""
+my_type = "A"
 ga = None
 
 class FTPChannel(asynchat.async_chat):
@@ -126,13 +127,32 @@ class FTPChannel(asynchat.async_chat):
         self._activeDataChannel.cmd = "LIST " + str(arg)
         self.push('226 ')
 
+
     def ftp_RETR(self, arg):
         """
         """
-        self._activeDataChannel.cmd = "RETR " + str(arg)
-        self.push('226 ')
+        if my_type != "I":
+            self.push('426 Only binary transfer mode is supported')
+        else:
+            self._activeDataChannel.cmd = "RETR " + str(arg)
+            self.push('226 ')
+
+
+    def ftp_STOR(self, arg):
+        """
+        """
+        if my_type != "I":
+            self.push('426 Only binary transfer mode is supported')
+        else:
+            # TODO: Check this is legit, don't just copy & paste from RETR...
+            self._activeDataChannel.cmd = "STOR " + str(arg)
+            self.push('226 ')
+
 
     def ftp_PASV(self, arg):
+        """
+        """
+        # *** TODO: Don't allow non-binary file transfers here?
         global nextPort
         PORT = nextPort
         nextPort += 1
@@ -141,15 +161,38 @@ class FTPChannel(asynchat.async_chat):
         self.push('227 =127,0,0,1,%d,%d' % (PORT / 256, PORT % 256))
         self.push('150 ')
 
+
     def ftp_QUIT(self, arg):
         # args is ignored
         self.push('221 Bye')
         self.close_when_done()
 
+
     def ftp_CWD(self, arg):
-        global cwd
-        cwd = arg
+        # TODO: Attach CWD (and other items) to channel...
+        global my_cwd
+        my_cwd = arg
         self.push('250 OK')
+
+
+    def ftp_TYPE(self, arg):
+        """
+        """
+        global my_type
+
+        response = '200 OK'
+        
+        if arg in ["A", "A N"]:    
+            my_type = "A"
+        elif arg in ["I", "L 8"]:
+            my_type = "I"
+        else:
+            response = "504 Unsupported TYPE parameter"
+            
+        self.push(response)
+
+
+import tempfile
 
 files = {}
 
@@ -172,9 +215,15 @@ class DataChannel(asyncore.dispatcher):
         self.cmd = ""
 
     def handle_accept(self):
+        """
+        """
+
+        if self.cmd[:4] in ["RETR", "STOR"] and my_type != "I":
+            return
+                    
         conn, addr = self.accept()
 
-        self.conn = conn
+        self.conn = conn # Remove this?
 
         if self.cmd.startswith('LIST'):
             r = ga.getMessagesByLabel('ftp')
@@ -188,6 +237,24 @@ class DataChannel(asyncore.dispatcher):
         elif self.cmd.startswith('RETR'):
             name_req = self.cmd[5:]
             conn.sendall(files[name_req].content)
+        elif self.cmd.startswith('STOR'):
+            buffer = ""
+            while True:
+                data = conn.recv(1024)
+                if not data:
+                    break
+                buffer += data
+
+            filename = self.cmd[5:]
+            tempDir = tempfile.mkdtemp()
+            tempFilePath = os.path.join(tempDir, filename)
+            print "Writing `%s` to `%s`." % (filename, tempFilePath)
+            open(tempFilePath, "wb").write(buffer)
+
+            ga.storeFile(tempFilePath, "ftp")
+
+            os.remove(tempFilePath)
+            os.rmdir(tempDir)
 
         conn.close()
 
