@@ -44,14 +44,17 @@ if __name__ == "__main__":
 
     print "\nPlease wait, logging in..."
 
-    ga.login()
-
-    print "Log in successful.\n"
-    gmsg = libgmail.GmailComposedMessage(to, subject, msg)
-
-    if ga.sendMessage(gmsg):
-        print "Message sent `%s` successfully." % subject
+    try:
+        ga.login()
+    except libgmail.GmailLoginFailure:
+        print "\nLogin failed. (Wrong username/password?)"
     else:
-        print "Could not send message."
+        print "Log in successful.\n"
+        gmsg = libgmail.GmailComposedMessage(to, subject, msg)
 
-    print "Done."
+        if ga.sendMessage(gmsg):
+            print "Message sent `%s` successfully." % subject
+        else:
+            print "Could not send message."
+
+        print "Done."

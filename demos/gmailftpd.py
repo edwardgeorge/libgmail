@@ -114,8 +114,13 @@ class FTPChannel(asynchat.async_chat):
     def ftp_PASS(self, arg = ''):
         global ga
         ga = libgmail.GmailAccount(my_user, arg)
-        ga.login()
-        self.push('230 User logged in')
+
+        try:
+            ga.login()
+        except libgmail.GmailLoginFailure:
+            self.push('530 Login failed. (Wrong username/password?)')
+        else:
+            self.push('230 User logged in')
 
     def ftp_LIST(self, arg):
         self._activeDataChannel.cmd = "LIST " + str(arg)

@@ -158,13 +158,17 @@ class POPChannel(asynchat.async_chat):
         """
         """
         ga = libgmail.GmailAccount(my_user, arg)
-        ga.login()
 
-        # For the moment this is our form of "locking the maildrop".
-        global snapshot
-        snapshot = GmailAccountSnapshot(ga)
-        
-        self.push('+OK User logged in')
+        try:
+            ga.login()
+        except libgmail.GmailLoginFailure:
+            self.push('-ERR Login failed. (Wrong username/password?)')
+        else:
+            # For the moment this is our form of "locking the maildrop".
+            global snapshot
+            snapshot = GmailAccountSnapshot(ga)
+            
+            self.push('+OK User logged in')
 
 
     def pop_STAT(self, arg):

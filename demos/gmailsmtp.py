@@ -94,7 +94,7 @@ class ESMTPChannel(smtpd.SMTPChannel):
 ##             self.push('250 %s' % self.__fqdn)
             self._SMTPChannel__greeting = arg
             self.push('250-%s' % self._SMTPChannel__fqdn)
-            self.push('250 AUTH LOGIN PLAIN')
+            self.push('250 AUTH PLAIN')
 
 
     def smtp_AUTH(self, arg):
@@ -102,6 +102,7 @@ class ESMTPChannel(smtpd.SMTPChannel):
         """
         kind, data = arg.split(" ")
         # TODO: Ensure kind == "PLAIN"
+        # TODO: Support "LOGIN" (required by Outlook?) <http://www.technoids.org/saslmech.html>
 
         data = base64.decodestring(data)[1:]
         user, pw = data.split("\x00")
@@ -111,7 +112,7 @@ class ESMTPChannel(smtpd.SMTPChannel):
         
         try:
             ga.login()
-        except:
+        except libgmail.GmailLoginFailure:
             self.push("535 Authorization failed")
         else:
             self.push('235 Ok')

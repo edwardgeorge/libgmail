@@ -40,48 +40,52 @@ if __name__ == "__main__":
 
     print "\nPlease wait, logging in..."
 
-    ga.login()
+    try:
+        ga.login()
+    except libgmail.GmailLoginFailure:
+        print "\nLogin failed. (Wrong username/password?)"
+    else:
+        print "Log in successful.\n"
 
-    print "Log in successful.\n"
+        searches = libgmail.STANDARD_FOLDERS + ga.getLabelNames()
 
-    searches = libgmail.STANDARD_FOLDERS + ga.getLabelNames()
+        while 1:
+            try:
+                print "Select folder or label to archive: (Ctrl-C to exit)"
+                print "Note: *All* pages of results will be archived."
 
-    while 1:
-        try:
-            print "Select folder or label to archive: (Ctrl-C to exit)"
-            print "Note: *All* pages of results will be archived."
+                for optionId, optionName in enumerate(searches):
+                    print "  %d. %s" % (optionId, optionName)
 
-            for optionId, optionName in enumerate(searches):
-                print "  %d. %s" % (optionId, optionName)
+                name = searches[int(raw_input("Choice: "))]
 
-            name = searches[int(raw_input("Choice: "))]
+                if name in libgmail.STANDARD_FOLDERS:
+                    result = ga.getMessagesByFolder(name, True)
+                else:
+                    result = ga.getMessagesByLabel(name, True)
 
-            if name in libgmail.STANDARD_FOLDERS:
-                result = ga.getMessagesByFolder(name, True)
-            else:
-                result = ga.getMessagesByLabel(name, True)
+                print
+                mbox = []
+                if len(result):
+                    for thread in result:
+                        print
+                        print thread.id, len(thread), thread.subject
 
-            print
-            mbox = []
-            if len(result):
-                for thread in result:
-                    print
-                    print thread.id, len(thread), thread.subject
+                        for msg in thread:
+                            print "  ", msg.id, msg.number, msg.subject
+                            source = msg.source.replace("\r","").lstrip()
+                            mbox.append("From - Thu Jan 22 22:03:29 1998\n")
+                            mbox.append(source)
+                            mbox.append("\n\n") #TODO:Check if we need either/both?
+                    import time 
+                    open("archive-%s-%s.mbox" % (name, time.time()),
+                         "w").writelines(mbox)
+                else:
+                    print "No threads found in `%s`." % name
+                print
+                    
+            except KeyboardInterrupt:
+                break
 
-                    for msg in thread:
-                        print "  ", msg.id, msg.number, msg.subject
-                        source = msg.source.replace("\r","").lstrip()
-                        mbox.append("From - Thu Jan 22 22:03:29 1998\n")
-                        mbox.append(source)
-                        mbox.append("\n\n") #TODO:Check if we need either/both?
-                import time 
-                open("archive-%s-%s.mbox" % (name, time.time()),
-                     "w").writelines(mbox)
-            else:
-                print "No threads found in `%s`." % name
-            print
-                
-        except KeyboardInterrupt:
-            print "\n\nDone."
-            break
+    print "\n\nDone."
     

@@ -2,7 +2,7 @@
 #
 # libgmail -- Gmail access via Python
 #
-# Version: 0.0.7 (03 August 2004)
+# Version: 0.0.8 (XX August 2004)
 #
 # Author: follower@myrealbox.com
 #
@@ -215,6 +215,12 @@ def _paramsToMime(params, filenames, files):
 
     return mimeMsg
 
+
+class GmailLoginFailure(Exception):
+    """
+    Raised whenever the login process fails--could be wrong username/password,
+    or Gmail service error, for example.
+    """
     
 
 class GmailAccount:
@@ -251,9 +257,12 @@ class GmailAccount:
         # TODO: Tidy this up?
         # This requests the page that provides the required "GV" cookie.
         RE_PAGE_REDIRECT = 'top\.location\W=\W"CheckCookie\?continue=([^"]+)'
-        # TODO: Catch failure exception here...
-        redirectURL = urllib.unquote(re.search(RE_PAGE_REDIRECT,
-                                               pageData).group(1))
+        # TODO: Catch more failure exceptions here...?
+        try:
+            redirectURL = urllib.unquote(re.search(RE_PAGE_REDIRECT,
+                                                   pageData).group(1))
+        except AttributeError:
+            raise GmailLoginFailure
         # We aren't concerned with the actual content of this page,
         # just the cookie that is returned with it.
         pageData = self._retrievePage(redirectURL)
@@ -792,44 +801,48 @@ if __name__ == "__main__":
 
     print "\nPlease wait, logging in..."
 
-    ga.login()
+    try:
+        ga.login()
+    except GmailLoginFailure:
+        print "\nLogin failed. (Wrong username/password?)"
+    else:
+        print "Login successful.\n"
 
-    print "Log in successful.\n"
+        # TODO: Use properties instead?
+        quotaInfo = ga.getQuotaInfo()
+        quotaMbUsed = quotaInfo[QU_SPACEUSED]
+        quotaMbTotal = quotaInfo[QU_QUOTA]
+        quotaPercent = quotaInfo[QU_PERCENT]
+        print "%s of %s used. (%s)\n" % (quotaMbUsed, quotaMbTotal, quotaPercent)
 
-    # TODO: Use properties instead?
-    quotaInfo = ga.getQuotaInfo()
-    quotaMbUsed = quotaInfo[QU_SPACEUSED]
-    quotaMbTotal = quotaInfo[QU_QUOTA]
-    quotaPercent = quotaInfo[QU_PERCENT]
-    print "%s of %s used. (%s)\n" % (quotaMbUsed, quotaMbTotal, quotaPercent)
+        searches = STANDARD_FOLDERS + ga.getLabelNames()
 
-    searches = STANDARD_FOLDERS + ga.getLabelNames()
+        while 1:
+            try:
+                print "Select folder or label to list: (Ctrl-C to exit)"
+                for optionId, optionName in enumerate(searches):
+                    print "  %d. %s" % (optionId, optionName)
 
-    while 1:
-        try:
-            print "Select folder or label to list: (Ctrl-C to exit)"
-            for optionId, optionName in enumerate(searches):
-                print "  %d. %s" % (optionId, optionName)
+                name = searches[int(raw_input("Choice: "))]
 
-            name = searches[int(raw_input("Choice: "))]
+                if name in STANDARD_FOLDERS:
+                    result = ga.getMessagesByFolder(name, True)
+                else:
+                    result = ga.getMessagesByLabel(name, True)
 
-            if name in STANDARD_FOLDERS:
-                result = ga.getMessagesByFolder(name, True)
-            else:
-                result = ga.getMessagesByLabel(name, True)
+                print
+                if len(result):
+                    for thread in result:
+                        print
+                        print thread.id, len(thread), thread.subject
+                        for msg in thread:
+                            print "  ", msg.id, msg.number, msg.subject
+                            #print msg.source
+                else:
+                    print "No threads found in `%s`." % name
 
-            print
-            if len(result):
-                for thread in result:
-                    print
-                    print thread.id, len(thread), thread.subject
-                    for msg in thread:
-                        print "  ", msg.id, msg.number, msg.subject
-                        #print msg.source
-            else:
-                print "No threads found in `%s`." % name
-
-            print
-        except KeyboardInterrupt:
-            print "\n\nDone."
-            break
+                print
+            except KeyboardInterrupt:
+                break
+            
+    print "\n\nDone."
