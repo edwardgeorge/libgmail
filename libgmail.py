@@ -533,8 +533,27 @@ class GmailAccount:
 
         items = self._parsePage(_buildURL(**params))
 
+        # TODO: Mark as trashed on success?
         return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
+
         
+    def trashThread(self, thread):
+        """
+        """
+        # TODO: Decide if we should make this a method of `GmailThread`.
+        # TODO: Should we check we have been given a `GmailThread` instance?
+        params = {
+            U_SEARCH: U_ALL_SEARCH, #TODO:Check this search value always works.
+            U_VIEW: U_UPDATE_VIEW,
+            U_ACTION: U_MARKTRASH_ACTION,
+            U_ACTION_THREAD: thread.id,
+            U_ACTION_TOKEN: self._getActionToken(),
+            }
+
+        items = self._parsePage(_buildURL(**params))
+
+        # TODO: Mark as trashed on success?
+        return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
 
         
 
