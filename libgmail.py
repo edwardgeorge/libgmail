@@ -193,21 +193,22 @@ def _paramsToMime(params, filenames):
 
         mimeMsg.attach(mimeItem)
 
-    for idx, filename in enumerate(filenames):
-        contentType = mimetypes.guess_type(filename)[0]
-        if not contentType:
-            contentType = "application/octet-stream"
-        mimeItem = MIMEBase(*contentType.split("/"))
-        mimeItem.add_header("Content-Disposition", "form-data",
-                            name="file%s" % idx, filename=filename)
-        # TODO: Encode the payload?
-        mimeItem.set_payload(open(filename, "rb").read())
-        
-        # TODO: Handle this better...?
-        for hdr in ['MIME-Version','Content-Transfer-Encoding']:
-            del mimeItem[hdr]
+    if filenames:
+        for idx, filename in enumerate(filenames):
+            contentType = mimetypes.guess_type(filename)[0]
+            if not contentType:
+                contentType = "application/octet-stream"
+            mimeItem = MIMEBase(*contentType.split("/"))
+            mimeItem.add_header("Content-Disposition", "form-data",
+                                name="file%s" % idx, filename=filename)
+            # TODO: Encode the payload?
+            mimeItem.set_payload(open(filename, "rb").read())
 
-        mimeMsg.attach(mimeItem)
+            # TODO: Handle this better...?
+            for hdr in ['MIME-Version','Content-Transfer-Encoding']:
+                del mimeItem[hdr]
+
+            mimeMsg.attach(mimeItem)
 
     del mimeMsg['MIME-Version']
 
