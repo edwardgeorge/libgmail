@@ -279,6 +279,26 @@ class GmailAccount:
         return items[D_THREADLIST_SUMMARY][TS_TOTAL_MSGS]
 
 
+
+def _splitBunches(infoItems):
+    """
+
+    Utility to help make it easy to iterate over each item separately,
+    even if they were bunched on the page.
+    """
+    result= []
+
+    # TODO: Decide if this is the best approach.
+    for group in infoItems:
+        if type(group) == tuple:
+            result.extend(group)
+        else:
+            result.append(group)
+
+    return result
+            
+        
+
 class GmailFolder:
     """
     """
@@ -293,16 +313,7 @@ class GmailFolder:
 
         # TODO: Handle all this properly...
         # This happens when more than one "t" datapack is on a page.
-        if type(threadsInfo) != type(tuple):
-            # Option 1 - only one thread
-            # Option 2 - multiple threads split
-            validThreadsInfo = ()
-            for item in threadsInfo:
-                if type(item) is tuple:
-                    validThreadsInfo += item
-                else:
-                    validThreadsInfo += tuple([item])
-            threadsInfo = validThreadsInfo
+        threadsInfo = _splitBunches(threadsInfo)
 
         self._threads = [GmailThread(self, thread)
                          for thread in threadsInfo]
