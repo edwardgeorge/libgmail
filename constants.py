@@ -3,12 +3,12 @@
 #
 # constants.py -- Useful constants extracted from Gmail Javascript code
 #
-# Source version: 9bb15b436c55eb41
+# Source version: 44f09303f2d4f76f
 #
-# Generated: 2004-07-03 17:10 UTC
+# Generated: 2004-07-03 19:22 UTC
 #
 
-js_version = '9bb15b436c55eb41'
+js_version = '44f09303f2d4f76f'
 
 D_VERSION = "v"
 D_QUOTA = "qu"
@@ -21,6 +21,7 @@ D_CONV_END = "ce"
 D_MSGINFO = "mi"
 D_MSGBODY = "mb"
 D_MSGATT = "ma"
+D_COMPOSE = "c"
 D_CONTACT = "co"
 D_CATEGORIES = "ct"
 D_CATEGORIES_COUNT_ALL = "cta"
