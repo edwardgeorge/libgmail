@@ -1,0 +1,28 @@
+== Version: 0.0.2 (5 July 2004) ==
+
+constants.py
+ * Useful constants from the Gmail Javascript code as Python module.
+ * Update to match current live Javascript.
+ * Fudge some enumerations that we need to start at 0.
+
+libgmail.py
+ * Refactor to make use of Folder/Thread/Message model. Standardised some naming. Make use of imported Gmail constants. Centralise page retrieval & parsing.
+ * Calculate number of messages in thread.
+ * Refactor & reorganise code. Minor style edits. Refine design of folder, thread & message classes. Modify folders, threads & messages to be as lazy as possible when it comes to retrieving data from the net. Enable message instances to retrieve their original mail text. Add Gmail implementation notes. Hide password entry. Demo now displays threads & messages.
+ * Version date change.
+
+mkconstants.py
+ * Tool to make useful constants from the Gmail Javascript code available via a Python module.
+ * Fudge some enumerations that we need to start at 0.
+
+demos/archive.py
+ * Initial rough demo to archive all messages into text files.
+
+CHANGELOG
+ * Added.
+
+
+== Version: 0.0.1 (2 July 2004) ==
+
+libgmail.py
+ * Initial import of version 0.0.1 (as posted in comp.lang.python).
