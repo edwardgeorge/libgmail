@@ -160,8 +160,15 @@ class CookieJar:
         """
         """
         request.add_header('Cookie', ";".join(self._cookies))
-    
 
+
+    
+def _buildURL(**kwargs):
+    """
+    """
+    return "%s?%s" % (URL_GMAIL, urllib.urlencode(kwargs))
+
+    
 
 class GmailAccount:
     """
@@ -242,6 +249,18 @@ class GmailAccount:
         return items
 
 
+    def _parseSearchResult(self, searchType, start = 0, **kwargs):
+        """
+        """
+        params = {U_SEARCH: searchType,
+                  U_START: start,
+                  U_VIEW: U_THREADLIST_VIEW,
+                  }
+        params.update(kwargs)
+        
+        return self._parsePage(_buildURL(**params))
+                         
+        
     def getFolder(self, folderName, allPages = False):
         """
 
@@ -251,11 +270,8 @@ class GmailAccount:
 
         Returns a `GmailFolder` instance.
         """
-        URL_FOLDER_BASE = "https://gmail.google.com/gmail?search=%s&start=%s&view=tl"
-
         start = 0
-
-        items = self._parsePage(URL_FOLDER_BASE % (folderName, start))
+        items = self._parseSearchResult(folderName, start)
 
         # Note: This also handles when more than one "t" datapack is on a page.
         threadsInfo = _splitBunches(items.get(D_THREAD, []))
@@ -269,7 +285,7 @@ class GmailAccount:
                 # There's more than one page of results...
                 start += threadsPerPage
 
-                items = self._parsePage(URL_FOLDER_BASE % (folderName, start))
+                items = self._parseSearchResult(folderName, start)
                 threadsInfo.extend(_splitBunches(items[D_THREAD]))
 
                 # TODO: Check if the total has changed?
@@ -304,19 +320,16 @@ class GmailAccount:
     def getRawMessage(self, msgId):
         """
         """
-        URL_BASE_RAW_MESSAGE = "https://gmail.google.com/gmail?view=om&th=%s"
-
-        pageData = self._retrievePage(URL_BASE_RAW_MESSAGE % msgId)
-
-        return pageData
+        return self._retrievePage(
+            _buildURL(view=U_ORIGINAL_MESSAGE_VIEW, th=msgId))
 
 
     def getUnreadMsgCount(self):
         """
         """
-        URL_QUERY_UNREAD = "https://gmail.google.com/gmail?search=query&q=is%3Aunread&view=tl"
-
-        items = self._parsePage(URL_QUERY_UNREAD)
+        # TODO: Clean up queries a bit..?
+        items = self._parseSearchResult(U_QUERY_SEARCH,
+                                        q = "is:" + U_AS_SUBSET_UNREAD)
 
         return items[D_THREADLIST_SUMMARY][TS_TOTAL_MSGS]
 
@@ -376,16 +389,11 @@ class GmailFolder:
         #       `GmailThread`, but for some reason the folder name/search
         #       needs to be supplied to retrieve the conversation view,
         #       so it's going here for the moment.
-
-        # TODO: Change how url is constructed & retrieved...
-        URL_CONVERSATION_BASE = \
-                       "https://gmail.google.com/gmail?search=%s&view=cv&th=%s"
-
-        items = self._account._parsePage(URL_CONVERSATION_BASE %
-                                         (self.folderName, thread.id))
+        items = self._account._parseSearchResult(self.folderName,
+                                                 view = U_CONVERSATION_VIEW,
+                                                 th = thread.id)
 
         # TODO: Handle this better?
-
         msgsInfo = items[D_MSGINFO]
 
         # TODO: Handle special case of only one message in thread better?
