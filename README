@@ -6,6 +6,10 @@ or this:
 
   python demos/archive.py
 
+or even this:
+
+  python demos/sendmsg.py <account> <to address> <subject> <body>
+
 for hours of fun!(*)
 
 (*) Note: Fun may not last for hours. Use at your own risk, blah, blah, etc...
