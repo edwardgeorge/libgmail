@@ -636,6 +636,9 @@ class GmailThread:
         self.id = threadInfo[T_THREADID] # TODO: Change when canonical updated?
         self.subject = threadInfo[T_SUBJECT_HTML]
 
+        self.summary = threadInfo[T_SNIPPET_HTML]
+        self.extraSummary = threadInfo[T_EXTRA_SNIPPET] #TODO: What is this?
+
         # TODO: Store other info?
         # Extract number of messages in thread/conversation.
 
@@ -720,6 +723,8 @@ class GmailMessage(object):
         """
         if not self._source:
             # TODO: Do this more nicely...?
+            # TODO: Strip initial white space & fix up last line ending
+            #       to make it legal as per RFC?
             self._source = self._account.getRawMessage(self.id)
 
         return self._source
