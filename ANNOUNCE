@@ -17,7 +17,7 @@ allow mail to be sent from any standard mail client that uses SMTP
 
 New demonstration utility to provide access to Gmail message
 attachments via a download-only FTP proxy--this allows retrieval of
-suitably marked attachments by a standard FTP client. Utilitize more
+suitably marked attachments by a standard FTP client. Utilize more
 of your Gmail space!
 
 License: GPL 2.0 (gmailftpd.py is dual licensed with PSF)
