@@ -478,10 +478,15 @@ class GmailAccount:
         return at
 
 
-    def sendMessage(self, msg, asDraft = False):
+    def sendMessage(self, msg, asDraft = False, _extraParams = None):
         """
 
           `msg` -- `GmailComposedMessage` instance.
+
+          `_extraParams` -- Dictionary containing additional parameters
+                            to put into POST message. (Not officially
+                            for external use, more to make feature
+                            additional a little easier to play with.)
         
         Note: Now returns `GmailMessageStub` instance with populated
               `id` (and `_account`) fields on success or None on failure.
@@ -500,6 +505,9 @@ class GmailAccount:
                   "subject": msg.subject,
                   "msgbody": msg.body,
                   }
+
+        if _extraParams:
+            params.update(_extraParams)
 
         # Amongst other things, I used the following post to work out this:
         # <http://groups.google.com/groups?
@@ -975,6 +983,23 @@ class GmailAttachment:
         return self._content
 
     content = property(_getContent, doc = "")
+
+
+    def _getFullId(self):
+        """
+
+        Returns the "full path"/"full id" of the attachment. (Used
+        to refer to the file when forwarding.)
+
+        The id is of the form: "<thread_id>_<msg_id>_<attachment_id>"
+        
+        """
+        return "%s_%s_%s" % (self._parent._parent.id,
+                             self._parent.id,
+                             self.id)
+
+    _fullId = property(_getFullId, doc = "")
+
 
 
 class GmailComposedMessage:
