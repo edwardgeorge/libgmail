@@ -292,6 +292,22 @@ class GmailThread:
         # TODO: Store other info?
         # TODO: Extract number of messages in thread/conversation.
 
+        self._authors = threadInfo[T_AUTHORS_HTML]
+
+        try:
+            # TODO: Find out if this information can be found another way...
+            self._length = int(re.search("\((\d+?)\)\Z",
+                                         self._authors).group(1))
+        except AttributeError:
+            # If there's no message count then the thread only has one message.
+            self._length = 1
+
+    def __len__(self):
+        """
+        """
+        return self._length
+            
+
 
 class GmailFolder:
     """
@@ -340,7 +356,7 @@ if __name__ == "__main__":
             print
             for thread in folder:
                 #print "================================"
-                print thread.id, thread.subject
+                print thread.id, thread.subject, len(thread)
                 #print ga.getRawMessage(msg.id)
                 #print "================================"
 
