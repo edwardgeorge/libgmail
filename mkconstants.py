@@ -18,8 +18,15 @@ import time
 
 OUTPUT_FILENAME = "constants.py"
 
+# These enumerations start at 1 rather than 0 -- I haven't looked into
+# why they're are different. We want them to work correctly for Python
+# sequences so we have to fudge them and subtract one from each value.
+# NOTE: This means we can't send these values back, but that shouldn't be
+#       a problem.
+FUDGE_OFFSET_PREFIXES = ["QU", "TS", "CS", "MI"]
+
 # Used to filter out only the constants we want to use at the moment.
-USEFUL_PREFIXES = ["D", "QU", "TS", "T", "CS", "MI"]
+USEFUL_PREFIXES = ["D", "T"] + FUDGE_OFFSET_PREFIXES
 RE_CONSTANTS = "var ([A-Z]{1,2}_[A-Z_]+?)=(.+?);"
 
 VAR_JS_VERSION = "js_version"
@@ -62,6 +69,8 @@ if __name__ == "__main__":
         prefix = name[:name.index("_")]
 
         if prefix in USEFUL_PREFIXES:
+            if prefix in FUDGE_OFFSET_PREFIXES:
+                value = int(value) - 1
             lines.append(FMT_DEFINITION % (name, value))
 
     lines.insert(0, FILE_HEADER % jsVersion.strip("'"))
