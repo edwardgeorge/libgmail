@@ -300,10 +300,7 @@ class GmailAccount:
         pageData = resp.read()
 
         # Extract cookies here
-        # NOTE: "SID" & "GV" really only need to be extracted once
-        #       as they don't seem to change during session.
-        self._cookieJar.extractCookies(resp, [ACTION_TOKEN_COOKIE,
-                                              "SID", "GV"])
+        self._cookieJar.extractCookies(resp)
 
         # TODO: Enable logging of page data for debugging purposes?
 
