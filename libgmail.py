@@ -93,6 +93,7 @@ def _parsePage(pageContent):
             # By happy coincidence Gmail's data is stored in a form
             # we can turn into Python data types by simply evaluating it.
             # TODO: Parse this better/safer?
+            # TODO: Handle "mb" mail bodies better as they can be anything.
             if value != "": # Empty strings aren't parsed successfully.
                 parsedValue = eval(value.replace("\n",""))
             else:
@@ -259,7 +260,43 @@ class GmailAccount:
         params.update(kwargs)
         
         return self._parsePage(_buildURL(**params))
-                         
+
+
+    def _parseThreadSearch(self, searchType, allPages = False, **kwargs):
+        """
+
+        Only works for thread-based results at present. # TODO: Change this?
+        """
+        start = 0
+        threadsInfo = []
+
+        # Option to get *all* threads if multiple pages are used.
+        while (start == 0) or (allPages and
+                               len(threadsInfo) < threadListSummary[TS_TOTAL]):
+            
+                items = self._parseSearchResult(searchType, start, **kwargs)
+
+                #TODO: Handle single & zero result case better? Does this work?
+                try:
+                    threads = items[D_THREAD]
+                except KeyError:
+                    break
+                else:
+                    if type(threads[0]) not in [tuple, list]:#TODO:Urgh,change!
+                        threadsInfo.append(threads)
+                    else:
+                        # Note: This also handles when more than one "t"
+                        # "DataPack" is on a page.
+                        threadsInfo.extend(_splitBunches(threads))
+
+                    # TODO: Check if the total or per-page values have changed?
+                    threadListSummary = items[D_THREADLIST_SUMMARY]
+                    threadsPerPage = threadListSummary[TS_NUM]
+
+                    start += threadsPerPage
+
+        return GmailSearchResult(self, (searchType, kwargs), threadsInfo)
+        
         
     def getFolder(self, folderName, allPages = False):
         """
@@ -268,29 +305,13 @@ class GmailAccount:
 
           `folderName` -- As set in Gmail interface.
 
-        Returns a `GmailFolder` instance.
+        Returns a `GmailSearchResult` instance.
         """
-        start = 0
-        items = self._parseSearchResult(folderName, start)
+        return self._parseThreadSearch(folderName, allPages = allPages)
+        #threads = self._parseThreadSearch(folderName, allPages = allPages)
 
-        # Note: This also handles when more than one "t" datapack is on a page.
-        threadsInfo = _splitBunches(items.get(D_THREAD, []))
-
-        # Option to get *all* threads if multiple pages are used.
-        # TODO: Record whether or not we retrieved all pages...
-        if allPages:
-            threadListSummary = items[D_THREADLIST_SUMMARY]
-            threadsPerPage = threadListSummary[TS_NUM]
-            while len(threadsInfo) < threadListSummary[TS_TOTAL]:
-                # There's more than one page of results...
-                start += threadsPerPage
-
-                items = self._parseSearchResult(folderName, start)
-                threadsInfo.extend(_splitBunches(items[D_THREAD]))
-
-                # TODO: Check if the total has changed?
-                
-        return GmailFolder(self, folderName, threadsInfo)
+        # TODO: Record whether or not we retrieved all pages..?
+        #return GmailFolder(self, folderName, threads)
 
     
     def getQuotaInfo(self, refresh = False):
@@ -354,17 +375,17 @@ def _splitBunches(infoItems):
             
         
 
-class GmailFolder:
+class GmailSearchResult:
     """
     """
 
-    def __init__(self, account, folderName, threadsInfo):
+    def __init__(self, account, search, threadsInfo):
         """
 
-          `threadsInfo` -- As returned from Gmail but unbunched.
+        `threadsInfo` -- As returned from Gmail but unbunched.
         """
         self._account = account
-        self.folderName = folderName
+        self.search = search # TODO: Turn into object + format nicely.
 
         self._threads = [GmailThread(self, thread)
                          for thread in threadsInfo]
@@ -381,27 +402,6 @@ class GmailFolder:
         """
         return len(self._threads)
 
-
-    def getMessages(self, thread):
-        """
-        """
-        # NOTE: To my mind this method should probably be part of
-        #       `GmailThread`, but for some reason the folder name/search
-        #       needs to be supplied to retrieve the conversation view,
-        #       so it's going here for the moment.
-        items = self._account._parseSearchResult(self.folderName,
-                                                 view = U_CONVERSATION_VIEW,
-                                                 th = thread.id)
-
-        # TODO: Handle this better?
-        msgsInfo = items[D_MSGINFO]
-
-        # TODO: Handle special case of only one message in thread better?
-        if type(msgsInfo) != type([]):
-            msgsInfo = [msgsInfo]
-
-        return [GmailMessage(thread, msg)
-                for msg in msgsInfo]
 
 
 class GmailThread:
@@ -452,10 +452,30 @@ class GmailThread:
         """
         """
         if not self._messages:
-            self._messages = self._parent.getMessages(self)
+            self._messages = self._getMessages(self)
             
         return iter(self._messages)
 
+
+    def _getMessages(self, thread):
+        """
+        """
+        # TODO: Do this better.
+        # TODO: Specify the query folder using our specific search?
+        items = self._parent._account._parseSearchResult(U_QUERY_SEARCH,
+                                                 view = U_CONVERSATION_VIEW,
+                                                         th = thread.id,
+                                                         q = "in:anywhere")
+
+        # TODO: Handle this better?
+        msgsInfo = items[D_MSGINFO]
+
+        # TODO: Handle special case of only one message in thread better?
+        if type(msgsInfo) != type([]):
+            msgsInfo = [msgsInfo]
+
+        return [GmailMessage(thread, msg)
+                for msg in msgsInfo]
 
         
 class GmailMessage(object):
