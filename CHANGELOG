@@ -1,3 +1,18 @@
+== Version: 0.0.6 (15 July 2004) ==
+
+demos/gmailsmtp.py
+ *  That was too easy, there oughta be a law! Thanks to Python's
+    undocumented SMTP server module we can now send mail with a
+    standard mail client via (E)SMTP. Extended standard SMTP class to
+    handle ESMTP EHLO & AUTH PLAIN commands.
+
+libgmail.py
+ *  Added utility function '_retrieveJavascript' to 'GmailAccount' to
+    help developers who want to look at it. (In theory also so you can
+    regenerate 'constants.py' but the Javascript Gmail now uses isn't
+    actually useful for that anymore...) (Added by request.)
+
+
 == Version: 0.0.5 (11 July 2004) ==
 
 libgmail.py, demos/sendmsg.py

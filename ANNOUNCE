@@ -1,4 +1,4 @@
-[ANN] libgmail 0.0.5 -- Gmail access via Python
+[ANN] libgmail 0.0.6 -- Gmail access via Python -- Now with SMTP Proxy!
 
 libgmail -- Python binding for Google's Gmail service
 
@@ -7,20 +7,28 @@ libgmail -- Python binding for Google's Gmail service
 The `libgmail` project is a pure Python binding to provide access to
 Google's Gmail web-mail service.
 
-The library currently ships with one demonstration utility to archive
+The library currently ships with a demonstration utility to archive
 messages from a Gmail account into mbox files, suitable for importing
 into a local email client.
 
+Also includes a demonstration utility that acts as a SMTP proxy to
+allow mail to be sent from any standard mail client that uses SMTP
+(e.g. Mail.app, Mozilla etc).
+
 License: GPL 2.0
 
-Major changes since 0.0.4:
+Major changes since 0.0.5:
 
- * Added functionality to enable message sending.
- 
- * Added command line example to send a message.
+ * Implemented SMTP proxy to enable Gmail to be send with a
+    standard mail client via (E)SMTP. 
+
+ * Extended standard SMTP class to handle ESMTP EHLO & AUTH PLAIN commands.
+
+ * Utility function '_retrieveJavascript' to retrieve current version
+   of Gmail Javascript file. (By request.)
 
 
-<p><a href="http://libgmail.sf.net/">libgmail 0.0.5</a> - The
+<p><a href="http://libgmail.sf.net/">libgmail 0.0.6</a> - The
 `libgmail` project is a pure Python binding to provide access to
-Google's Gmail web-mail service. (11-Jul-04)</p>
+Google's Gmail web-mail service. (15-Jul-04)</p>
 
