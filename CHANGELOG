@@ -1,3 +1,30 @@
+== Version: 0.0.7 (03 August 2004) ==
+
+constants.py, mkconstants.py
+ *  Added attachment related constants. 
+
+libgmail.py, demos/gmailsmtp.py
+ *  Allow file data to be specified directly (rather than via an on-
+    disk file) when specifying attachments (this allows using existing
+    Message instance payloads mostly directly). Modify SMTP Proxy demo
+    to handle sending attachments.
+
+demos/gmailftpd.py
+ *  Initial import of Gmail attachments FTP Proxy! 
+
+libgmail.py
+ *  Corrected version info for previous release. 
+
+ *  Added 'getMessagesByQuery' function. Added initial attachment
+    retrieval handling. Clean up handling of references to parent
+    objects & account objects. Version info update.
+
+ *  Handle sending attachments. Works, but implementation is extremely
+    *cough* sub-optimal...
+
+ *  Don't try to attach files if there are none. 
+
+
 == Version: 0.0.6 (15 July 2004) ==
 
 demos/gmailsmtp.py

@@ -2,7 +2,7 @@
 #
 # libgmail -- Gmail access via Python
 #
-# Version: 0.0.7 (XX July 2004)
+# Version: 0.0.7 (03 August 2004)
 #
 # Author: follower@myrealbox.com
 #

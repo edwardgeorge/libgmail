@@ -14,6 +14,12 @@ or perhaps this:
 
   python demos/gmailsmtp.py # (Then connect to SMTP proxy on local port 8025)
 
+or how about this:
+
+  python demos/gmailftpd.py # (Then connect to FTP proxy on local port 8021,
+                            #  after creating a label named 'ftp' and
+                            #  applying it to some messages with attachments.)
+
 for hours of fun!(*)
 
 (*) Note: Fun may not last for hours. Use at your own risk, blah, blah, etc...

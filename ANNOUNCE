@@ -1,4 +1,4 @@
-[ANN] libgmail 0.0.6 -- Gmail access via Python -- Now with SMTP Proxy!
+ANN: libgmail 0.0.7 - Gmail access via Python - Now with FTP Proxy!
 
 libgmail -- Python binding for Google's Gmail service
 
@@ -13,11 +13,27 @@ into a local email client.
 
 Also includes a demonstration utility that acts as a SMTP proxy to
 allow mail to be sent from any standard mail client that uses SMTP
-(e.g. Mail.app, Mozilla etc).
+(e.g. Mail.app, Mozilla etc). (Now handles attachments.)
 
-License: GPL 2.0
+New demonstration utility to provide access to Gmail message
+attachments via a download-only FTP proxy--this allows retrieval of
+suitably marked attachments by a standard FTP client. Utilitize more
+of your Gmail space!
 
-Major changes since 0.0.5:
+License: GPL 2.0 (gmailftpd.py is dual licensed with PSF)
+
+Major changes since 0.0.6:
+
+ * Demo FTP proxy enables marked Gmail message attachments to be
+   download via FTP.
+
+ * Implemented sending & receiving of message attachments. 
+
+ * Updated SMTP Proxy demo to handle sending attachments.
+
+ * Added 'getMessagesByQuery' function.
+
+Major changes since 0.0.5: (Repeated from last announcement)
 
  * Implemented SMTP proxy to enable Gmail to be send with a
     standard mail client via (E)SMTP. 
@@ -28,7 +44,8 @@ Major changes since 0.0.5:
    of Gmail Javascript file. (By request.)
 
 
-<p><a href="http://libgmail.sf.net/">libgmail 0.0.6</a> - The
+<p><a href="http://libgmail.sf.net/">libgmail 0.0.7</a> - The
 `libgmail` project is a pure Python binding to provide access to
-Google's Gmail web-mail service. (15-Jul-04)</p>
+Google's Gmail web-mail service; includes SMTP & FTP
+proxies. (03-Aug-04)</p>
 
