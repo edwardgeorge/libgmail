@@ -105,7 +105,7 @@ def _parsePage(pageContent):
 
     global versionWarned
     if itemsDict[D_VERSION] != js_version and not versionWarned:
-        logging.warning("Live Javascript and constants file versions differ.")
+        logging.debug("Live Javascript and constants file versions differ.")
         versionWarned = True
 
     return itemsDict
