@@ -41,6 +41,8 @@ URL_GMAIL = "https://gmail.google.com/gmail"
 FOLDER_INBOX = "inbox"
 FOLDER_SENT = "sent"
 
+versionWarned = False # If the Javascript version is different have we
+                      # warned about it?
 
 RE_COOKIE_VAL = 'cookieVal=\W*"(.+)"'
 def _extractGV(pageData):
@@ -110,8 +112,10 @@ def _parsePage(pageContent):
             else:
                 itemsDict[name] = parsedValue
 
-    if itemsDict[D_VERSION] != js_version:
+    global versionWarned
+    if itemsDict[D_VERSION] != js_version and not versionWarned:
         logging.warning("Live Javascript and constants file versions differ.")
+        versionWarned = True
 
     return itemsDict
 
