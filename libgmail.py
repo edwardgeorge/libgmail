@@ -34,7 +34,9 @@ import re
 import urllib
 import urllib2
 import logging
+import mimetypes
 
+from email.MIMEBase import MIMEBase
 from email.MIMEText import MIMEText
 from email.MIMEMultipart import MIMEMultipart
 
@@ -176,7 +178,7 @@ def _buildURL(**kwargs):
 
 
 
-def _paramsToMime(params):
+def _paramsToMime(params, filenames):
     """
     """
     mimeMsg = MIMEMultipart("form-data")
@@ -185,9 +187,25 @@ def _paramsToMime(params):
         mimeItem = MIMEText(value)
         mimeItem.add_header("Content-Disposition", "form-data", name=name)
 
-        del mimeItem['Content-Type']
-        del mimeItem['MIME-Version']
-        del mimeItem['Content-Transfer-Encoding']
+        # TODO: Handle this better...?
+        for hdr in ['Content-Type','MIME-Version','Content-Transfer-Encoding']:
+            del mimeItem[hdr]
+
+        mimeMsg.attach(mimeItem)
+
+    for idx, filename in enumerate(filenames):
+        contentType = mimetypes.guess_type(filename)[0]
+        if not contentType:
+            contentType = "application/octet-stream"
+        mimeItem = MIMEBase(*contentType.split("/"))
+        mimeItem.add_header("Content-Disposition", "form-data",
+                            name="file%s" % idx, filename=filename)
+        # TODO: Encode the payload?
+        mimeItem.set_payload(open(filename, "rb").read())
+        
+        # TODO: Handle this better...?
+        for hdr in ['MIME-Version','Content-Transfer-Encoding']:
+            del mimeItem[hdr]
 
         mimeMsg.attach(mimeItem)
 
@@ -441,13 +459,43 @@ class GmailAccount:
         # Amongst other things, I used the following post to work out this:
         # <http://groups.google.com/groups?
         #  selm=mailman.1047080233.20095.python-list%40python.org>
-        mimeMessage = _paramsToMime(params)
+        mimeMessage = _paramsToMime(params, msg.filenames)
 
-        # TODO: Tidy all this up.
-        lines = mimeMessage.as_string().split("\n")
+        #### TODO: Ughh, tidy all this up & do it better...
+        ## This horrible mess is here for two main reasons:
+        ##  1. The `Content-Type` header (which also contains the boundary
+        ##     marker) needs to be extracted from the MIME message so
+        ##     we can send it as the request `Content-Type` header instead.
+        ##  2. It seems the form submission needs to use "\r\n" for new
+        ##     lines instead of the "\n" returned by `as_string()`.
+        ##     I tried changing the value of `NL` used by the `Generator` class
+        ##     but it didn't work so I'm doing it this way until I figure
+        ##     out how to do it properly. Of course, first try, if the payloads
+        ##     contained "\n" sequences they got replaced too, which corrupted
+        ##     the attachments. I could probably encode the submission,
+        ##     which would probably be nicer, but in the meantime I'm kludging
+        ##     this workaround that replaces all non-text payloads with a
+        ##     marker, changes all "\n" to "\r\n" and finally replaces the
+        ##     markers with the original payloads.
+        ## Yeah, I know, it's horrible, but hey it works doesn't it? If you've
+        ## got a problem with it, fix it yourself & give me the patch!
+        ##
+        origPayloads = {}
+        FMT_MARKER = "&&&&&&%s&&&&&&"
 
-        contentTypeHeader = lines[0].split(": ", 1)
-        data = "\r\n".join(lines[2:]) + "\r\n" # TODO: Use epilogue instead?
+        for i, m in enumerate(mimeMessage.get_payload()):
+            if not isinstance(m, MIMEText): #Do we care if we change text ones?
+                origPayloads[i] = m.get_payload()
+                m.set_payload(FMT_MARKER % i)
+
+        mimeMessage.epilogue = ""
+        msgStr = mimeMessage.as_string()
+        contentTypeHeader, data = msgStr.split("\n\n", 1)
+        contentTypeHeader = contentTypeHeader.split(":", 1)
+        data = data.replace("\n", "\r\n")
+        for k,v in origPayloads.iteritems():
+            data = data.replace(FMT_MARKER % k, v)
+        ####
         
         req = urllib2.Request(_buildURL(search = "undefined"), data = data)
         req.add_header(*contentTypeHeader)
@@ -583,6 +631,7 @@ class GmailThread:
         return [GmailMessage(thread, msg)
                 for msg in msgsInfo]
 
+
         
 class GmailMessage(object):
     """
@@ -657,14 +706,18 @@ class GmailComposedMessage:
     """
     """
 
-    def __init__(self, to, subject, body, cc = None, bcc = None):
+    def __init__(self, to, subject, body, cc = None, bcc = None,
+                 filenames = None):
         """
+
+          `filenames` - the file paths of the files to attach.
         """
         self.to = to
         self.subject = subject
         self.body = body
         self.cc = cc
         self.bcc = bcc
+        self.filenames = filenames
 
 
 
