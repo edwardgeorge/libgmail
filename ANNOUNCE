@@ -1,4 +1,4 @@
-[ANN] libgmail 0.0.4 -- Gmail access via Python
+[ANN] libgmail 0.0.5 -- Gmail access via Python
 
 libgmail -- Python binding for Google's Gmail service
 
@@ -13,24 +13,14 @@ into a local email client.
 
 License: GPL 2.0
 
-Major changes since 0.0.3:
+Major changes since 0.0.4:
 
- * Can return *all* message threads for a request, not just the first page.
-   This means it is possible to archive all your messages with the included
-   demo.
+ * Added functionality to enable message sending.
  
- * Retrieval of label names.
-
- * Message retrieval by folder or label.
-
- * Count of unread messages. 
-
- * Refactoring & code cleanup.
-
- * Demos can search by folder name or label name. (Including archival script.)
+ * Added command line example to send a message.
 
 
-<p><a href="http://libgmail.sf.net/">libgmail 0.0.4</a> - The
+<p><a href="http://libgmail.sf.net/">libgmail 0.0.5</a> - The
 `libgmail` project is a pure Python binding to provide access to
 Google's Gmail web-mail service. (11-Jul-04)</p>
 

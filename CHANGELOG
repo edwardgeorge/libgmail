@@ -1,3 +1,14 @@
+== Version: 0.0.5 (11 July 2004) ==
+
+libgmail.py, demos/sendmsg.py
+ *  Added functionality to enable message sending. Modified automatic
+    cookie handling. Added command line example to send a message.
+    Enabled page requests to be either a URL or a Request instance.
+
+constants.py, mkconstants.py
+ *  Added more useful constants.
+
+
 == Version: 0.0.4 (11 July 2004) ==
 
 constants.py, mkconstants.py
