@@ -182,7 +182,7 @@ class GmailAccount:
         self._pw = pw
 
         self._cachedQuotaInfo = None
-        self._cachedCategoryNames = None
+        self._cachedLabelNames = None
         
         self._cookieJar = CookieJar()
 
@@ -242,7 +242,7 @@ class GmailAccount:
             pass
 
         try:
-            self._cachedCategoryNames = [category[CT_NAME]
+            self._cachedLabelNames = [category[CT_NAME]
                                          for category in items[D_CATEGORIES]]
         except KeyError:
             pass
@@ -295,6 +295,7 @@ class GmailAccount:
 
                     start += threadsPerPage
 
+        # TODO: Record whether or not we retrieved all pages..?
         return GmailSearchResult(self, (searchType, kwargs), threadsInfo)
         
         
@@ -308,10 +309,6 @@ class GmailAccount:
         Returns a `GmailSearchResult` instance.
         """
         return self._parseThreadSearch(folderName, allPages = allPages)
-        #threads = self._parseThreadSearch(folderName, allPages = allPages)
-
-        # TODO: Record whether or not we retrieved all pages..?
-        #return GmailFolder(self, folderName, threads)
 
     
     def getQuotaInfo(self, refresh = False):
@@ -327,16 +324,24 @@ class GmailAccount:
         return self._cachedQuotaInfo[:3]
 
 
-    def getCategoryNames(self, refresh = False):
+    def getLabelNames(self, refresh = False):
         """
         """
         # TODO: Change this to a property?
-        if not self._cachedCategoryNames or refresh:
+        if not self._cachedLabelNames or refresh:
             # TODO: Handle this better...
             self.getFolder(U_INBOX_SEARCH)
 
-        return self._cachedCategoryNames
+        return self._cachedLabelNames
+
+
+    def getLabeledMessages(self, label, allPages = False):
+        """
         
+        """
+        return self._parseThreadSearch(U_CATEGORY_SEARCH,
+                                       cat=label, allPages = allPages)
+
 
     def getRawMessage(self, msgId):
         """
