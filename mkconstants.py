@@ -30,7 +30,7 @@ OUTPUT_FILENAME = "constants.py"
 FUDGE_OFFSET_PREFIXES = ["QU", "TS", "CS", "MI", "SM"]
 
 # Used to filter out only the constants we want to use at the moment.
-USEFUL_PREFIXES = ["D", "T", "CT"] + FUDGE_OFFSET_PREFIXES
+USEFUL_PREFIXES = ["D", "T", "CT", "A"] + FUDGE_OFFSET_PREFIXES
 USEFUL_SUFFIXES = ["SEARCH", "START", "VIEW", "COOKIE", "THREAD"]
 USEFUL_NAMES = ["U_REFERENCED_MSG", "U_DRAFT_MSG", "U_ACTION_TOKEN"]
 RE_CONSTANTS = "var ([A-Z]{1,}_[A-Z_]+?)=(.+?);"
