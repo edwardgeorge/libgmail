@@ -8,13 +8,12 @@
 #
 # License: GPL 2.0
 #
-# Requires:
-#   * ClientCookie <http://wwwsearch.sourceforge.net/ClientCookie/>
-#
 # Thanks:
 #   * Live HTTP Headers <http://livehttpheaders.mozdev.org/>
 #   * Gmail <http://gmail.google.com/>
 #   * Google Blogoscoped <http://blog.outer-court.com/>
+#   * ClientCookie <http://wwwsearch.sourceforge.net/ClientCookie/>
+#     (There when I needed it...)
 #   * The *first* big G. :-)
 #
 # NOTE:
@@ -31,10 +30,9 @@
 
 from constants import *
 
-import ClientCookie
-
 import re
 import urllib
+import urllib2
 import logging
 
 URL_LOGIN = "https://www.google.com/accounts/ServiceLoginBoxAuth"
@@ -42,32 +40,6 @@ URL_GMAIL = "https://gmail.google.com/gmail"
 
 FOLDER_INBOX = "inbox"
 FOLDER_SENT = "sent"
-
-
-## This class is from the ClientCookie docs.
-## TODO: Do all this cleanly.
-# Build an opener that *doesn't* automatically call .add_cookie_header()
-# and .extract_cookies(), so we can do it manually without interference.
-class NullCookieProcessor(ClientCookie.HTTPCookieProcessor):
-    def http_request(self, request): return request
-    def http_response(self, request, response): return response
-
-
-
-## TODO: Do this properly.
-import time
-def _bakeQuickCookie(name, value, path, domain):
-    """
-    Kludge to work around no easy way to create Cookie with defaults.
-    (Defaults taken from Usenet post by `ClientCookie` author.)
-    """
-    return ClientCookie.Cookie(0, name, value, None, 0,
-                               domain, True, domain.startswith("."),
-                               path, True,
-                               True,  # true if must only be sent via https
-                               time.time()+(3600*24*365),  # expires
-                               0, "", "", {})
-
 
 
 RE_COOKIE_VAL = 'cookieVal=\W*"(.+)"'
@@ -145,6 +117,46 @@ def _parsePage(pageContent):
 
 
 
+class CookieJar:
+    """
+    A rough cookie handler, intended to only refer to one domain.
+
+    Does no expiry or anything like that.
+
+    (The only reason this is here is so I don't have to require
+    the `ClientCookie` package.)
+    
+    """
+
+    def __init__(self):
+        """
+        """
+        self._cookies = []
+
+
+    def extractCookies(self, response, nameFilter = None):
+        """
+        """
+        # TODO: Do this all more nicely?
+        for cookie in response.headers.getheaders('Set-Cookie'):
+            cookieName = cookie.split("=")[0]
+            if not nameFilter or cookieName in nameFilter:
+                self._cookies.append(cookie.split(";")[0])
+
+
+    def addCookie(self, name, value):
+        """
+        """
+        self._cookies.append("%s=%s" % (name, value))
+
+
+    def setCookies(self, request):
+        """
+        """
+        request.add_header('Cookie', ";".join(self._cookies))
+    
+
+
 class GmailAccount:
     """
     """
@@ -155,11 +167,9 @@ class GmailAccount:
         self.name = name
         self._pw = pw
 
-        self._cookieJar = ClientCookie.CookieJar()
-        self._opener = ClientCookie.build_opener(NullCookieProcessor)
-
         self._cachedQuotaInfo = None
 
+        self._cookieJar = CookieJar()
 
 
     def login(self):
@@ -174,31 +184,30 @@ class GmailAccount:
         headers = {'Host': 'www.google.com',
                    'User-Agent': 'User-Agent: Mozilla/5.0 (compatible;)'}
 
-        req = ClientCookie.Request(URL_LOGIN, data=data, headers=headers)
-        resp = ClientCookie.urlopen(req)
-        self._cookieJar.extract_cookies(resp, req)
+        req = urllib2.Request(URL_LOGIN, data=data, headers=headers)
+        resp = urllib2.urlopen(req)
+
+        self._cookieJar.extractCookies(resp, ["SID"])
         
         pageData = resp.read()
         gv = _extractGV(pageData)
 
-        self._cookieJar.set_cookie(
-            _bakeQuickCookie(name="GV", value=gv, path="/",
-                             domain=".gmail.google.com"))
-
+        self._cookieJar.addCookie("GV", gv)
 
 
     def _retrievePage(self, url):
         """
         """
         # TODO: Do extract cookies here too?
-        req = ClientCookie.Request(url)
-        self._cookieJar.add_cookie_header(req)
-        resp = ClientCookie.urlopen(req)
+        req = urllib2.Request(url)
+        self._cookieJar.setCookies(req)
+        resp = urllib2.urlopen(req)
 
         pageData = resp.read()
 
-        return pageData
+        # TODO: Enable logging of page data for debugging purposes?
 
+        return pageData
 
 
     def _parsePage(self, url):
