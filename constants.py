@@ -5,7 +5,7 @@
 #
 # Source version: 44f09303f2d4f76f
 #
-# Generated: 2004-07-10 20:29 UTC
+# Generated: 2004-07-11 11:11 UTC
 #
 
 js_version = '44f09303f2d4f76f'
@@ -91,6 +91,12 @@ MI_KNOWNAUTHOR = 17
 MI_PHISHWARNING = 18
 CT_NAME = 0
 CT_COUNT = 1
+SM_COMPOSEID = 0
+SM_SUCCESS = 1
+SM_MSG = 2
+SM_NEWTHREADID = 3
+CMD_SEARCH = "SEARCH"
+ACTION_TOKEN_COOKIE = "GMAIL_AT"
 U_VIEW = "view"
 U_PAGE_VIEW = "page"
 U_THREADLIST_VIEW = "tl"
@@ -142,4 +148,24 @@ U_AS_SUBSET_ALLSPAMTRASH = "ast"
 U_AS_SUBSET_READ = "read"
 U_AS_SUBSET_UNREAD = "unread"
 U_AS_SUBSET_CATEGORY_PREFIX = "cat_"
+U_THREAD = "th"
+U_PREV_THREAD = "prev"
+U_NEXT_THREAD = "next"
+U_DRAFT_MSG = "draft"
 U_START = "start"
+U_ACTION_TOKEN = "at"
+U_ACTION_THREAD = "t"
+U_REFERENCED_MSG = "rm"
+U_COMPOSEID = "cmid"
+U_COMPOSE_MODE = "cmode"
+U_COMPOSE_SUBJECT = "su"
+U_COMPOSE_TO = "to"
+U_COMPOSE_CC = "cc"
+U_COMPOSE_BCC = "bcc"
+U_COMPOSE_BODY = "body"
+U_PRINT_THREAD = "pth"
+CONV_VIEW = "conv"
+TLIST_VIEW = "tlist"
+PREFS_VIEW = "prefs"
+HIST_VIEW = "hist"
+COMPOSE_VIEW = "comp"

@@ -27,12 +27,13 @@ OUTPUT_FILENAME = "constants.py"
 # sequences so we have to fudge them and subtract one from each value.
 # NOTE: This means we can't send these values back, but that shouldn't be
 #       a problem.
-FUDGE_OFFSET_PREFIXES = ["QU", "TS", "CS", "MI"]
+FUDGE_OFFSET_PREFIXES = ["QU", "TS", "CS", "MI", "SM"]
 
 # Used to filter out only the constants we want to use at the moment.
 USEFUL_PREFIXES = ["D", "T", "CT"] + FUDGE_OFFSET_PREFIXES
-USEFUL_SUFFIXES = ["SEARCH", "START", "VIEW"]
-RE_CONSTANTS = "var ([A-Z]{1,2}_[A-Z_]+?)=(.+?);"
+USEFUL_SUFFIXES = ["SEARCH", "START", "VIEW", "COOKIE", "THREAD"]
+USEFUL_NAMES = ["U_REFERENCED_MSG", "U_DRAFT_MSG", "U_ACTION_TOKEN"]
+RE_CONSTANTS = "var ([A-Z]{1,}_[A-Z_]+?)=(.+?);"
 
 VAR_JS_VERSION = "js_version"
 
@@ -75,7 +76,8 @@ if __name__ == "__main__":
         suffix = name[name.rindex("_")+1:]
 
         if prefix in USEFUL_PREFIXES or suffix in USEFUL_SUFFIXES or \
-               name.startswith("U_AS_"):
+               name.startswith("U_AS_") or name.startswith("U_COMPOSE") or \
+               name in USEFUL_NAMES:
             if prefix in FUDGE_OFFSET_PREFIXES:
                 value = int(value) - 1
             lines.append(FMT_DEFINITION % (name, value))
