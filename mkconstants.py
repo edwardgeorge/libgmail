@@ -27,6 +27,7 @@ FUDGE_OFFSET_PREFIXES = ["QU", "TS", "CS", "MI"]
 
 # Used to filter out only the constants we want to use at the moment.
 USEFUL_PREFIXES = ["D", "T"] + FUDGE_OFFSET_PREFIXES
+USEFUL_SUFFIXES = ["SEARCH"]
 RE_CONSTANTS = "var ([A-Z]{1,2}_[A-Z_]+?)=(.+?);"
 
 VAR_JS_VERSION = "js_version"
@@ -67,8 +68,9 @@ if __name__ == "__main__":
 
     for name, value in matches:
         prefix = name[:name.index("_")]
+        suffix = name[name.rindex("_")+1:]        
 
-        if prefix in USEFUL_PREFIXES:
+        if prefix in USEFUL_PREFIXES or suffix in USEFUL_SUFFIXES:
             if prefix in FUDGE_OFFSET_PREFIXES:
                 value = int(value) - 1
             lines.append(FMT_DEFINITION % (name, value))

@@ -5,7 +5,7 @@
 #
 # Source version: 44f09303f2d4f76f
 #
-# Generated: 2004-07-04 14:11 UTC
+# Generated: 2004-07-10 18:15 UTC
 #
 
 js_version = '44f09303f2d4f76f'
@@ -89,3 +89,15 @@ MI_SNIPPETHTML = 15
 MI_ATTACHINFO = 16
 MI_KNOWNAUTHOR = 17
 MI_PHISHWARNING = 18
+U_SEARCH = "search"
+U_INBOX_SEARCH = "inbox"
+U_STARRED_SEARCH = "starred"
+U_ALL_SEARCH = "all"
+U_DRAFTS_SEARCH = "drafts"
+U_SENT_SEARCH = "sent"
+U_SPAM_SEARCH = "spam"
+U_TRASH_SEARCH = "trash"
+U_QUERY_SEARCH = "query"
+U_ADVANCED_SEARCH = "adv"
+U_CREATEFILTER_SEARCH = "cf"
+U_CATEGORY_SEARCH = "cat"
