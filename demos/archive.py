@@ -25,9 +25,6 @@ except ImportError:
     import libgmail
 
     
-FOLDER_NAMES = ['all',
-                libgmail.FOLDER_INBOX,
-                libgmail.FOLDER_SENT] # TODO: Get on the fly.
 if __name__ == "__main__":
     import sys
     from getpass import getpass
@@ -51,31 +48,34 @@ if __name__ == "__main__":
         try:
             print "Select folder to archive: (Ctrl-C to exit)"
             print "Note: *All* pages of results will be archived."
-            for optionId, folderName in enumerate(FOLDER_NAMES):
+            for optionId, folderName in enumerate(libgmail.STANDARD_FOLDERS):
                 print "  %d. %s" % (optionId, folderName)
 
-            folderName = FOLDER_NAMES[int(raw_input("Choice: "))]
+            folderName = libgmail.STANDARD_FOLDERS[int(raw_input("Choice: "))]
 
             folder = ga.getFolder(folderName, True)
 
             print
             mbox = []
-            for thread in folder:
-                print
-                print thread.id, len(thread), thread.subject
+            if len(folder):
+                for thread in folder:
+                    print
+                    print thread.id, len(thread), thread.subject
 
-                for msg in thread:
-                    print "  ", msg.id, msg.number, msg.subject
-                    # TODO: Rename "body" to "source".
-                    source = msg.body.replace("\r","").lstrip()
-                    mbox.append("From - Thu Jan 22 22:03:29 1998\n")
-                    mbox.append(source)
-                    mbox.append("\n\n") # TODO: Check if we need either/both?
-
+                    for msg in thread:
+                        print "  ", msg.id, msg.number, msg.subject
+                        # TODO: Rename "body" to "source".
+                        source = msg.body.replace("\r","").lstrip()
+                        mbox.append("From - Thu Jan 22 22:03:29 1998\n")
+                        mbox.append(source)
+                        mbox.append("\n\n") #TODO:Check if we need either/both?
+                import time 
+                open("archive-%s-%s.mbox" % (folderName, time.time()),
+                     "w").writelines(mbox)
+            else:
+                print "No threads found in folder `%s`." % folderName
             print
-            import time 
-            open("archive-%s-%s.mbox" % (folderName, time.time()),
-                 "w").writelines(mbox)
+                
         except KeyboardInterrupt:
             print "\n\nDone."
             break

@@ -38,8 +38,10 @@ import logging
 URL_LOGIN = "https://www.google.com/accounts/ServiceLoginBoxAuth"
 URL_GMAIL = "https://gmail.google.com/gmail"
 
-FOLDER_INBOX = "inbox"
-FOLDER_SENT = "sent"
+# TODO: Get these on the fly?
+STANDARD_FOLDERS = [U_INBOX_SEARCH, U_STARRED_SEARCH,
+                    U_ALL_SEARCH, U_DRAFTS_SEARCH,
+                    U_SENT_SEARCH, U_SPAM_SEARCH]
 
 versionWarned = False # If the Javascript version is different have we
                       # warned about it?
@@ -248,7 +250,7 @@ class GmailAccount:
         items = self._parsePage(URL_FOLDER_BASE % (folderName, start))
 
         # Note: This also handles when more than one "t" datapack is on a page.
-        threadsInfo = _splitBunches(items[D_THREAD])
+        threadsInfo = _splitBunches(items.get(D_THREAD, []))
 
         # Option to get *all* threads if multiple pages are used.
         if allPages:
@@ -274,7 +276,7 @@ class GmailAccount:
         # TODO: Change this to a property.
         if not self._cachedQuotaInfo:
             # TODO: Handle this better...
-            self.getFolder(FOLDER_INBOX)
+            self.getFolder(U_INBOX_SEARCH)
 
         return self._cachedQuotaInfo[:3]
 
@@ -339,6 +341,12 @@ class GmailFolder:
         """
         """
         return iter(self._threads)
+
+
+    def __len__(self):
+        """
+        """
+        return len(self._threads)
 
 
     def getMessages(self, thread):
@@ -453,8 +461,6 @@ class GmailMessage(object):
         
 
 
-
-FOLDER_NAMES = ['all', FOLDER_INBOX, FOLDER_SENT] # TODO: Get these on the fly.
 if __name__ == "__main__":
     import sys
     from getpass import getpass
@@ -484,20 +490,23 @@ if __name__ == "__main__":
     while 1:
         try:
             print "Select folder to list: (Ctrl-C to exit)"
-            for optionId, folderName in enumerate(FOLDER_NAMES):
+            for optionId, folderName in enumerate(STANDARD_FOLDERS):
                 print "  %d. %s" % (optionId, folderName)
 
-            folderName = FOLDER_NAMES[int(raw_input("Choice: "))]
+            folderName = STANDARD_FOLDERS[int(raw_input("Choice: "))]
 
             folder = ga.getFolder(folderName, True)
 
             print
-            for thread in folder:
-                print
-                print thread.id, len(thread), thread.subject
-                for msg in thread:
-                    print "  ", msg.id, msg.number, msg.subject
-                    #print msg.body
+            if len(folder):
+                for thread in folder:
+                    print
+                    print thread.id, len(thread), thread.subject
+                    for msg in thread:
+                        print "  ", msg.id, msg.number, msg.subject
+                        #print msg.body
+            else:
+                print "No threads found in folder `%s`." % folderName
 
             print
         except KeyboardInterrupt:
