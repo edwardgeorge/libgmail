@@ -35,6 +35,9 @@ import urllib
 import urllib2
 import logging
 
+from email.MIMEText import MIMEText
+from email.MIMEMultipart import MIMEMultipart
+
 URL_LOGIN = "https://www.google.com/accounts/ServiceLoginBoxAuth"
 URL_GMAIL = "https://gmail.google.com/gmail"
 
@@ -138,7 +141,7 @@ class CookieJar:
     def __init__(self):
         """
         """
-        self._cookies = []
+        self._cookies = {}
 
 
     def extractCookies(self, response, nameFilter = None):
@@ -146,28 +149,51 @@ class CookieJar:
         """
         # TODO: Do this all more nicely?
         for cookie in response.headers.getheaders('Set-Cookie'):
-            cookieName = cookie.split("=")[0]
-            if not nameFilter or cookieName in nameFilter:
-                self._cookies.append(cookie.split(";")[0])
+            name, value = (cookie.split("=", 1) + [""])[:2]
+            if not nameFilter or name in nameFilter:
+                self._cookies[name] = value.split(";")[0]
 
 
     def addCookie(self, name, value):
         """
         """
-        self._cookies.append("%s=%s" % (name, value))
+        self._cookies[name] = value
 
 
     def setCookies(self, request):
         """
         """
-        request.add_header('Cookie', ";".join(self._cookies))
+        request.add_header('Cookie',
+                           ";".join(["%s=%s" % (k,v)
+                                     for k,v in self._cookies.items()]))
 
-
+        
     
 def _buildURL(**kwargs):
     """
     """
     return "%s?%s" % (URL_GMAIL, urllib.urlencode(kwargs))
+
+
+
+def _paramsToMime(params):
+    """
+    """
+    mimeMsg = MIMEMultipart("form-data")
+
+    for name, value in params.iteritems():
+        mimeItem = MIMEText(value)
+        mimeItem.add_header("Content-Disposition", "form-data", name=name)
+
+        del mimeItem['Content-Type']
+        del mimeItem['MIME-Version']
+        del mimeItem['Content-Transfer-Encoding']
+
+        mimeMsg.attach(mimeItem)
+
+    del mimeMsg['MIME-Version']
+
+    return mimeMsg
 
     
 
@@ -210,27 +236,33 @@ class GmailAccount:
         self._cookieJar.addCookie("GV", gv)
 
 
-    def _retrievePage(self, url):
+    def _retrievePage(self, urlOrRequest):
         """
         """
-        # TODO: Do extract cookies here too?
-        req = urllib2.Request(url)
+        if not isinstance(urlOrRequest, urllib2.Request):
+            req = urllib2.Request(urlOrRequest)
+        else:
+            req = urlOrRequest
+            
         self._cookieJar.setCookies(req)
         resp = urllib2.urlopen(req)
 
         pageData = resp.read()
+
+        # TODO: Do extract cookies here too?
+        self._cookieJar.extractCookies(resp, [ACTION_TOKEN_COOKIE])
 
         # TODO: Enable logging of page data for debugging purposes?
 
         return pageData
 
 
-    def _parsePage(self, url):
+    def _parsePage(self, urlOrRequest):
         """
         Retrieve & then parse the requested page content.
         
         """
-        items = _parsePage(self._retrievePage(url))
+        items = _parsePage(self._retrievePage(urlOrRequest))
         
         # Automatically cache some things like quota usage.
         # TODO: Cache more?
@@ -360,6 +392,51 @@ class GmailAccount:
         return items[D_THREADLIST_SUMMARY][TS_TOTAL_MSGS]
 
 
+    def sendMessage(self, msg):
+        """
+
+          `msg` -- `GmailComposedMessage` instance.
+        
+        """
+        try:
+            at = self._cookieJar._cookies[ACTION_TOKEN_COOKIE]
+        except KeyError:
+            self.getLabelNames(True) 
+            at = self._cookieJar._cookies[ACTION_TOKEN_COOKIE]           
+
+        params = {U_VIEW: U_SENDMAIL_VIEW,
+                  U_REFERENCED_MSG: "",
+                  U_THREAD: "",
+                  U_DRAFT_MSG: "",
+                  U_COMPOSEID: "1",
+                  U_ACTION_TOKEN: at,
+                  U_COMPOSE_TO: msg.to,
+                  U_COMPOSE_CC: msg.cc,
+                  U_COMPOSE_BCC: msg.bcc,
+                  "subject": msg.subject,
+                  "msgbody": msg.body,
+                  }
+
+        # Amongst other things, I used the following post to work out this:
+        # <http://groups.google.com/groups?
+        #  selm=mailman.1047080233.20095.python-list%40python.org>
+        mimeMessage = _paramsToMime(params)
+
+        # TODO: Tidy all this up.
+        lines = mimeMessage.as_string().split("\n")
+
+        contentTypeHeader = lines[0].split(": ", 1)
+        data = "\r\n".join(lines[2:]) + "\r\n" # TODO: Use epilogue instead?
+        
+        req = urllib2.Request(_buildURL(search = "undefined"), data = data)
+        req.add_header(*contentTypeHeader)
+
+        items = self._parsePage(req)
+
+        # TODO: Check composeid & store new thread id?
+        return (items[D_SENDMAIL_RESULT][SM_SUCCESS] == 1)
+
+        
 
 def _splitBunches(infoItems):
     """
@@ -512,6 +589,20 @@ class GmailMessage(object):
 
     source = property(_getSource, doc = "")
         
+
+class GmailComposedMessage:
+    """
+    """
+
+    def __init__(self, to, subject, body, cc = None, bcc = None):
+        """
+        """
+        self.to = to
+        self.subject = subject
+        self.body = body
+        self.cc = cc
+        self.bcc = bcc
+
 
 
 if __name__ == "__main__":
