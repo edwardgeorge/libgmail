@@ -329,6 +329,16 @@ class GmailAccount:
 
         # TODO: Record whether or not we retrieved all pages..?
         return GmailSearchResult(self, (searchType, kwargs), threadsInfo)
+
+
+    def _retrieveJavascript(self, version = ""):
+        """
+
+        Note: `version` seems to be ignored.
+        """
+        return self._retrievePage(_buildURL(view = U_PAGE_VIEW,
+                                            name = "js",
+                                            ver = version))
         
         
     def getMessagesByFolder(self, folderName, allPages = False):
