@@ -5,7 +5,7 @@
 #
 # Source version: 44f09303f2d4f76f
 #
-# Generated: 2004-07-10 18:15 UTC
+# Generated: 2004-07-10 19:46 UTC
 #
 
 js_version = '44f09303f2d4f76f'
@@ -89,6 +89,8 @@ MI_SNIPPETHTML = 15
 MI_ATTACHINFO = 16
 MI_KNOWNAUTHOR = 17
 MI_PHISHWARNING = 18
+CT_NAME = 0
+CT_COUNT = 1
 U_SEARCH = "search"
 U_INBOX_SEARCH = "inbox"
 U_STARRED_SEARCH = "starred"

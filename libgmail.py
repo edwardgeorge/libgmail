@@ -174,7 +174,8 @@ class GmailAccount:
         self._pw = pw
 
         self._cachedQuotaInfo = None
-
+        self._cachedCategoryNames = None
+        
         self._cookieJar = CookieJar()
 
 
@@ -226,8 +227,15 @@ class GmailAccount:
         # Automatically cache some things like quota usage.
         # TODO: Cache more?
         # TODO: Expire cached values?
+        # TODO: Do this better.
         try:
             self._cachedQuotaInfo = items[D_QUOTA]
+        except KeyError:
+            pass
+
+        try:
+            self._cachedCategoryNames = [category[CT_NAME]
+                                         for category in items[D_CATEGORIES]]
         except KeyError:
             pass
         
@@ -253,6 +261,7 @@ class GmailAccount:
         threadsInfo = _splitBunches(items.get(D_THREAD, []))
 
         # Option to get *all* threads if multiple pages are used.
+        # TODO: Record whether or not we retrieved all pages...
         if allPages:
             threadListSummary = items[D_THREADLIST_SUMMARY]
             threadsPerPage = threadListSummary[TS_NUM]
@@ -268,18 +277,29 @@ class GmailAccount:
         return GmailFolder(self, folderName, threadsInfo)
 
     
-    def getQuotaInfo(self):
+    def getQuotaInfo(self, refresh = False):
         """
 
         Return MB used, Total MB and percentage used.
         """
         # TODO: Change this to a property.
-        if not self._cachedQuotaInfo:
+        if not self._cachedQuotaInfo or refresh:
             # TODO: Handle this better...
             self.getFolder(U_INBOX_SEARCH)
 
         return self._cachedQuotaInfo[:3]
 
+
+    def getCategoryNames(self, refresh = False):
+        """
+        """
+        # TODO: Change this to a property?
+        if not self._cachedCategoryNames or refresh:
+            # TODO: Handle this better...
+            self.getFolder(U_INBOX_SEARCH)
+
+        return self._cachedCategoryNames
+        
 
     def getRawMessage(self, msgId):
         """

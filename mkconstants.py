@@ -30,7 +30,7 @@ OUTPUT_FILENAME = "constants.py"
 FUDGE_OFFSET_PREFIXES = ["QU", "TS", "CS", "MI"]
 
 # Used to filter out only the constants we want to use at the moment.
-USEFUL_PREFIXES = ["D", "T"] + FUDGE_OFFSET_PREFIXES
+USEFUL_PREFIXES = ["D", "T", "CT"] + FUDGE_OFFSET_PREFIXES
 USEFUL_SUFFIXES = ["SEARCH"]
 RE_CONSTANTS = "var ([A-Z]{1,2}_[A-Z_]+?)=(.+?);"
 
