@@ -1,3 +1,51 @@
+== Version: 0.0.4 (11 July 2004) ==
+
+constants.py, mkconstants.py
+ *  Include standard folder/search name constants. 
+
+ *  Add more useful constants. 
+
+constants.py, libgmail.py, mkconstants.py
+ *  Added category name retrieval. 
+
+mkconstants.py
+ *  'mkconstants' isn't really useful anymore with the new JS version.
+
+libgmail.py
+ *  Add ability to get number of unread messages. 
+
+ *  Handle items that might be 'bunched' such as thread lists better. 
+
+ *  Only warn about mismatched Javascript versions once module import.
+    (Note: This may mean the Javascript version may change more than
+    once in a session and the second change won't be warned, but that
+    shouldn't be much of an issue...)
+
+ *  Refactor URL construction. Refactor query/search operation in
+    preparation for adding searches.
+
+ *  More refactoring. Made thread search query more generic to allow
+    use by (to come) label searches etc. Threads now belong to
+    'GmailSearchResult' instances rather than folders. Threads now
+    retrieve their own messages rather than relying on their parent to
+    do so.
+
+ *  We now refer to categories as labels, as the UI does. Enable
+    retrieval by label.
+
+libgmail.py, demos/archive.py
+ *  Allow all pages of results to be returned for a 'getFolder'
+    request. (Not tested much.)
+
+ *  Provide easy access to standard folder names. Added length
+    property to folders. Examples now handle empty folders gracefully.
+
+ *  Now uses 'getMessagesByXXXXX' style method names for folders &
+    labels. Now refer to original message source as 'source' & not
+    'body'. Enable demos to search by folder name or label name.
+
+
+
 == Version: 0.0.3 (8 July 2004) ==
 
 libgmail.py
