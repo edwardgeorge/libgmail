@@ -2,7 +2,7 @@
 #
 # libgmail -- Gmail access via Python
 #
-# Version: 0.0.1 (2 July 2004)
+# Version: 0.0.2 (XX July 2004)
 #
 # Author: follower@myrealbox.com
 #
@@ -21,15 +21,28 @@
 #   You should ensure you are permitted to use this script before using it
 #   to access Google's Gmail servers.
 #
+#
+# Gmail Implementation Notes
+# ==========================
+#
+# * Folders contain message threads, not individual messages. At present I
+#   do not know any way to list all messages without processing thread list.
+#
+
+from constants import *
+
 import ClientCookie
-import urllib
+
 import re
+import urllib
+import logging
 
 URL_LOGIN = "https://www.google.com/accounts/ServiceLoginBoxAuth"
 URL_GMAIL = "https://gmail.google.com/gmail"
 
 FOLDER_INBOX = "inbox"
 FOLDER_SENT = "sent"
+
 
 ## This class is from the ClientCookie docs.
 ## TODO: Do all this cleanly.
@@ -38,6 +51,7 @@ FOLDER_SENT = "sent"
 class NullCookieProcessor(ClientCookie.HTTPCookieProcessor):
     def http_request(self, request): return request
     def http_response(self, request, response): return response
+
 
 
 ## TODO: Do this properly.
@@ -75,33 +89,60 @@ def _extractGV(pageData):
     return gv
 
 
-RE_MAIL_DATA = "<!--(.*)-->"
-def _extractMailData(pageData):
-    """
-    """
-    try:
-        mailData = re.search(RE_MAIL_DATA, pageData, re.DOTALL).group(1)
-    except AttributeError:
-        print "Error: Couldn't get mail data."
-        raise SystemExit
-        
-    return mailData
 
-
-RE_SPLIT_MAIL_DATA = re.compile("D\((.*?)\);", re.DOTALL)
-def _parseMailData(mailData):
+RE_SPLIT_PAGE_CONTENT = re.compile("D\((.*?)\);", re.DOTALL)
+def _parsePage(pageContent):
     """
+    Parse the supplied HTML page and extract useful information from
+    the embedded Javascript.
+    
     """
-    items = (re.findall(RE_SPLIT_MAIL_DATA, mailData))
+    # Note: We use the easiest thing that works here and no longer
+    #       extract the Javascript code we want from the page first.
+    items = (re.findall(RE_SPLIT_PAGE_CONTENT, pageContent)) 
 
+    # TODO: Check we find something?
+    
     itemsDict = {}
+
+    namesFoundTwice = []
 
     for item in items:
         item = item.strip()[1:-1]
         name, value = (item.split(",", 1) + [""])[:2]
-        itemsDict[name.strip('"')] = value
+
+        name = name[1:-1] # Strip leading and trailing single or double quotes.
+        
+        try:
+            # By happy coincidence Gmail's data is stored in a form
+            # we can turn into Python data types by simply evaluating it.
+            # TODO: Parse this better/safer?
+            if value != "": # Empty strings aren't parsed successfully.
+                parsedValue = eval(value.replace("\n",""))
+            else:
+                parsedValue = value
+        except SyntaxError:
+            logging.warning("Could not parse item `%s` as it was `%s`." %
+                            (name, value))
+        else:
+            if itemsDict.has_key(name):
+                # This handles the case where a name key is used more than
+                # once (e.g. mail items, mail body) and automatically
+                # places the values into list.
+                # TODO: Check this actually works properly, it's early... :-)
+                if (name in namesFoundTwice):
+                    itemsDict[name].append(parsedValue)
+                else:
+                    itemsDict[name] = [itemsDict[name], parsedValue]
+                    namesFoundTwice.append(name)
+            else:
+                itemsDict[name] = parsedValue
+
+    if itemsDict[D_VERSION] != js_version:
+        logging.warning("Live Javascript and constants file versions differ.")
 
     return itemsDict
+
 
 
 OFFSET_MSG_ID = 0
@@ -119,19 +160,8 @@ class GmailMessage:
         # TODO: Populate additional fields & cache...(?)
         
 
-def _parseMsgData(msgsInfo):
-    """
-    """
-    # TODO: Parse this better/safer...
-    msgsData = eval(msgsInfo.replace("\n",""))
 
-    msgs = [GmailMessage(msg)
-            for msg in msgsData]
-
-    return msgs
-
-
-class GMailAccount:
+class GmailAccount:
     """
     """
 
@@ -144,7 +174,7 @@ class GMailAccount:
         self._cookieJar = ClientCookie.CookieJar()
         self._opener = ClientCookie.build_opener(NullCookieProcessor)
 
-        self._items = None
+        self._cachedQuotaInfo = None
 
 
 
@@ -172,7 +202,8 @@ class GMailAccount:
                              domain=".gmail.google.com"))
 
 
-    def _retrieveURL(self, url):
+
+    def _retrievePage(self, url):
         """
         """
         # TODO: Do extract cookies here too?
@@ -183,24 +214,44 @@ class GMailAccount:
         pageData = resp.read()
 
         return pageData
-        
 
-    def getFolderContent(self, folderName):
+
+
+    def _parsePage(self, url):
+        """
+        Retrieve & then parse the requested page content.
+        
+        """
+        items = _parsePage(self._retrievePage(url))
+        
+        # Automatically cache some things like quota usage.
+        # TODO: Cache more?
+        # TODO: Expire cached values?
+        try:
+            self._cachedQuotaInfo = items[D_QUOTA]
+        except KeyError:
+            pass
+        
+        return items
+
+
+
+    def getFolder(self, folderName):
         """
 
-        `folderName` -- As set in GMail interface.
+        Folders contain conversation/message threads.
+
+          `folderName` -- As set in GMail interface.
+
+        Returns a `GmailFolder` instance.
         """
         URL_FOLDER_BASE = "https://gmail.google.com/gmail?search=%s&view=tl"
 
-        pageData = self._retrieveURL(URL_FOLDER_BASE % folderName)
+        items = self._parsePage(URL_FOLDER_BASE % folderName)
 
-        mailData = _extractMailData(pageData)
+        return GmailFolder([GmailThread(thread)
+                            for thread in items[D_THREAD]])
 
-        self._items = _parseMailData(mailData)
-
-        msgsInfo = self._items["t"]
-
-        return _parseMsgData(msgsInfo)
     
 
     def getQuotaInfo(self):
@@ -208,15 +259,12 @@ class GMailAccount:
 
         Return MB used, Total MB and percentage used.
         """
-        if not self._items:
-            # TODO: Handle this better.
-            # This retrieves the value if we haven't cached it yet.
-            self.getFolderContent(FOLDER_INBOX)
+        # TODO: Change this to a property.
+        if not self._cachedQuotaInfo:
+            # TODO: Handle this better...
+            self.getFolder(FOLDER_INBOX)
 
-        quotaInfo = [value.strip('"')
-                     for value in self._items["qu"].split(",")]
-
-        return tuple(quotaInfo[:3])
+        return self._cachedQuotaInfo[:3]
 
 
     def getRawMessage(self, msgId):
@@ -228,14 +276,47 @@ class GMailAccount:
 
         return pageData
 
-        
+
+class GmailThread:
+    """
+    """
+
+    def __init__(self, threadInfo):
+        """
+        """
+        self.id = threadInfo[T_THREADID] # TODO: Check if this actually
+                                               #       changes when new
+                                               #       messages arrive.
+        self.subject = threadInfo[T_SUBJECT_HTML]
+
+        # TODO: Store other info?
+        # TODO: Extract number of messages in thread/conversation.
+
+
+class GmailFolder:
+    """
+    """
+
+    def __init__(self, threads):
+        """
+
+          `threads` -- A sequence of thread instances.
+        """
+        self._threads = threads
+
+
+    def __iter__(self):
+        """
+        """
+        return iter(self._threads)
+
 
 FOLDER_NAMES = [FOLDER_INBOX, FOLDER_SENT] # TODO: Get these on the fly.
 if __name__ == "__main__":
     name = raw_input("GMail account name: ")
     pw = raw_input("Password: ")
 
-    ga = GMailAccount(name, pw)
+    ga = GmailAccount(name, pw)
 
     print "\nPlease wait, logging in..."
 
@@ -248,20 +329,20 @@ if __name__ == "__main__":
     while 1:
         try:
             print "Select folder to list: (Ctrl-C to exit)"
-            print "(NOTE: This will display the content of *ALL* messages.)"
+            #print "(NOTE: This will display the content of *ALL* messages.)"
             for optionId, folderName in enumerate(FOLDER_NAMES):
                 print "  %d. %s" % (optionId, folderName)
 
             folderName = FOLDER_NAMES[int(raw_input("Choice: "))]
 
-            msgs = ga.getFolderContent(folderName)
+            folder = ga.getFolder(folderName)
 
             print
-            for msg in msgs:
-                print "================================"
-                #print msg.id, msg.subject
-                print ga.getRawMessage(msg.id)
-                print "================================"
+            for thread in folder:
+                #print "================================"
+                print thread.id, thread.subject
+                #print ga.getRawMessage(msg.id)
+                #print "================================"
 
             print
         except KeyboardInterrupt:
