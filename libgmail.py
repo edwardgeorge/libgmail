@@ -299,7 +299,7 @@ class GmailAccount:
         return GmailSearchResult(self, (searchType, kwargs), threadsInfo)
         
         
-    def getFolder(self, folderName, allPages = False):
+    def getMessagesByFolder(self, folderName, allPages = False):
         """
 
         Folders contain conversation/message threads.
@@ -319,7 +319,7 @@ class GmailAccount:
         # TODO: Change this to a property.
         if not self._cachedQuotaInfo or refresh:
             # TODO: Handle this better...
-            self.getFolder(U_INBOX_SEARCH)
+            self.getMessagesByFolder(U_INBOX_SEARCH)
 
         return self._cachedQuotaInfo[:3]
 
@@ -330,12 +330,12 @@ class GmailAccount:
         # TODO: Change this to a property?
         if not self._cachedLabelNames or refresh:
             # TODO: Handle this better...
-            self.getFolder(U_INBOX_SEARCH)
+            self.getMessagesByFolder(U_INBOX_SEARCH)
 
         return self._cachedLabelNames
 
 
-    def getLabeledMessages(self, label, allPages = False):
+    def getMessagesByLabel(self, label, allPages = False):
         """
         
         """
@@ -498,19 +498,19 @@ class GmailMessage(object):
 
         # TODO: Populate additional fields & cache...(?)
 
-        self._body = None
+        self._source = None
 
 
-    def _getBody(self):
+    def _getSource(self):
         """
         """
-        if not self._body:
+        if not self._source:
             # TODO: Ummm, do this a *little* more nicely...
-            self._body = self._thread._parent._account.getRawMessage(self.id)
+            self._source = self._thread._parent._account.getRawMessage(self.id)
 
-        return self._body
+        return self._source
 
-    body = property(_getBody, doc = "")
+    source = property(_getSource, doc = "")
         
 
 
@@ -540,26 +540,31 @@ if __name__ == "__main__":
     quotaPercent = quotaInfo[QU_PERCENT]
     print "%s of %s used. (%s)\n" % (quotaMbUsed, quotaMbTotal, quotaPercent)
 
+    searches = STANDARD_FOLDERS + ga.getLabelNames()
+
     while 1:
         try:
-            print "Select folder to list: (Ctrl-C to exit)"
-            for optionId, folderName in enumerate(STANDARD_FOLDERS):
-                print "  %d. %s" % (optionId, folderName)
+            print "Select folder or label to list: (Ctrl-C to exit)"
+            for optionId, optionName in enumerate(searches):
+                print "  %d. %s" % (optionId, optionName)
 
-            folderName = STANDARD_FOLDERS[int(raw_input("Choice: "))]
+            name = searches[int(raw_input("Choice: "))]
 
-            folder = ga.getFolder(folderName, True)
+            if name in STANDARD_FOLDERS:
+                result = ga.getMessagesByFolder(name, True)
+            else:
+                result = ga.getMessagesByLabel(name, True)
 
             print
-            if len(folder):
-                for thread in folder:
+            if len(result):
+                for thread in result:
                     print
                     print thread.id, len(thread), thread.subject
                     for msg in thread:
                         print "  ", msg.id, msg.number, msg.subject
-                        #print msg.body
+                        #print msg.source
             else:
-                print "No threads found in folder `%s`." % folderName
+                print "No threads found in `%s`." % name
 
             print
         except KeyboardInterrupt:

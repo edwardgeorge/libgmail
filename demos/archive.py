@@ -44,36 +44,41 @@ if __name__ == "__main__":
 
     print "Log in successful.\n"
 
+    searches = libgmail.STANDARD_FOLDERS + ga.getLabelNames()
+
     while 1:
         try:
-            print "Select folder to archive: (Ctrl-C to exit)"
+            print "Select folder or label to archive: (Ctrl-C to exit)"
             print "Note: *All* pages of results will be archived."
-            for optionId, folderName in enumerate(libgmail.STANDARD_FOLDERS):
-                print "  %d. %s" % (optionId, folderName)
 
-            folderName = libgmail.STANDARD_FOLDERS[int(raw_input("Choice: "))]
+            for optionId, optionName in enumerate(searches):
+                print "  %d. %s" % (optionId, optionName)
 
-            folder = ga.getFolder(folderName, True)
+            name = searches[int(raw_input("Choice: "))]
+
+            if name in libgmail.STANDARD_FOLDERS:
+                result = ga.getMessagesByFolder(name, True)
+            else:
+                result = ga.getMessagesByLabel(name, True)
 
             print
             mbox = []
-            if len(folder):
-                for thread in folder:
+            if len(result):
+                for thread in result:
                     print
                     print thread.id, len(thread), thread.subject
 
                     for msg in thread:
                         print "  ", msg.id, msg.number, msg.subject
-                        # TODO: Rename "body" to "source".
-                        source = msg.body.replace("\r","").lstrip()
+                        source = msg.source.replace("\r","").lstrip()
                         mbox.append("From - Thu Jan 22 22:03:29 1998\n")
                         mbox.append(source)
                         mbox.append("\n\n") #TODO:Check if we need either/both?
                 import time 
-                open("archive-%s-%s.mbox" % (folderName, time.time()),
+                open("archive-%s-%s.mbox" % (name, time.time()),
                      "w").writelines(mbox)
             else:
-                print "No threads found in folder `%s`." % folderName
+                print "No threads found in `%s`." % name
             print
                 
         except KeyboardInterrupt:
