@@ -273,6 +273,19 @@ class GmailFolder:
         self._account = account
         self.folderName = folderName
 
+        # TODO: Handle all this properly...
+        # This happens when more than one "t" datapack is on a page.
+        if type(threadsInfo) != type(tuple):
+            # Option 1 - only one thread
+            # Option 2 - multiple threads split
+            validThreadsInfo = ()
+            for item in threadsInfo:
+                if type(item) is tuple:
+                    validThreadsInfo += item
+                else:
+                    validThreadsInfo += tuple([item])
+            threadsInfo = validThreadsInfo
+
         self._threads = [GmailThread(self, thread)
                          for thread in threadsInfo]
 
