@@ -92,7 +92,7 @@ def _parsePage(pageContent):
             # TODO: Parse this better/safer?
             # TODO: Handle "mb" mail bodies better as they can be anything.
             if value != "": # Empty strings aren't parsed successfully.
-                parsedValue = eval(value.replace("\n",""))
+                parsedValue = eval(value.replace("\n","").replace(",,",",None,").replace(",,",",None,")) # Yuck! Need two ",," replaces to handle ",,," overlap. TODO: Tidy this up... TODO: It appears there may have been a change in the number & order of at least the CS_* values, investigate.
             else:
                 parsedValue = value
         except SyntaxError:
