@@ -559,8 +559,8 @@ class GmailAccount:
         # TODO: Mark as trashed on success?
         return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
 
-        
-    def trashThread(self, thread):
+
+    def _doThreadAction(self, actionId, thread):
         """
         """
         # TODO: Decide if we should make this a method of `GmailThread`.
@@ -568,15 +568,26 @@ class GmailAccount:
         params = {
             U_SEARCH: U_ALL_SEARCH, #TODO:Check this search value always works.
             U_VIEW: U_UPDATE_VIEW,
-            U_ACTION: U_MARKTRASH_ACTION,
+            U_ACTION: actionId,
             U_ACTION_THREAD: thread.id,
             U_ACTION_TOKEN: self._getActionToken(),
             }
 
         items = self._parsePage(_buildURL(**params))
 
-        # TODO: Mark as trashed on success?
         return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
+        
+        
+    def trashThread(self, thread):
+        """
+        """
+        # TODO: Decide if we should make this a method of `GmailThread`.
+        # TODO: Should we check we have been given a `GmailThread` instance?
+
+        result = self._doThreadAction(U_MARKTRASH_ACTION, thread)
+        
+        # TODO: Mark as trashed on success?
+        return result
 
 
     def _createUpdateRequest(self, actionId): #extraData):
@@ -712,6 +723,7 @@ class GmailSessionState:
         dump(self.state, open(filename, "wb"), -1)
 
 
+
 class GmailThread:
     """
 
@@ -755,7 +767,6 @@ class GmailThread:
         self._messages = []
 
         
-
     def __len__(self):
         """
         """
@@ -791,6 +802,29 @@ class GmailThread:
         return [GmailMessage(thread, msg)
                 for msg in msgsInfo]
 
+
+    # TODO: Add property to retrieve list of labels for this message.
+    
+    def addLabel(self, labelName):
+        """
+        """
+        # Note: It appears this also automatically creates new labels.
+        result = self._account._doThreadAction(U_ADDCATEGORY_ACTION+labelName,
+                                               self)
+        # TODO: Update list of attached labels?
+        return result
+
+
+    def removeLabel(self, labelName):
+        """
+        """
+        # TODO: Check label is already attached?
+        # Note: An error is not generated if the label is not already attached.
+        result = \
+               self._account._doThreadAction(U_REMOVECATEGORY_ACTION+labelName,
+                                             self)
+        # TODO: Update list of attached labels?
+        return result
 
         
 class GmailMessage(object):
