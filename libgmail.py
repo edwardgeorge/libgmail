@@ -50,6 +50,10 @@ STANDARD_FOLDERS = [U_INBOX_SEARCH, U_STARRED_SEARCH,
                     U_ALL_SEARCH, U_DRAFTS_SEARCH,
                     U_SENT_SEARCH, U_SPAM_SEARCH]
 
+# Constants with names not from the Gmail Javascript:
+# TODO: Move to `constants.py`?
+U_SAVEDRAFT_VIEW = "sd"
+
 versionWarned = False # If the Javascript version is different have we
                       # warned about it?
 
@@ -469,13 +473,14 @@ class GmailAccount:
         return at
 
 
-    def sendMessage(self, msg):
+    def sendMessage(self, msg, asDraft = False):
         """
 
           `msg` -- `GmailComposedMessage` instance.
         
         """
-        params = {U_VIEW: U_SENDMAIL_VIEW,
+        # TODO: Handle drafts separately?
+        params = {U_VIEW: [U_SENDMAIL_VIEW, U_SAVEDRAFT_VIEW][asDraft],
                   U_REFERENCED_MSG: "",
                   U_THREAD: "",
                   U_DRAFT_MSG: "",
