@@ -54,15 +54,23 @@ if __name__ == "__main__":
             folder = ga.getFolder(folderName)
 
             print
+            mbox = []
             for thread in folder:
                 print
                 print thread.id, len(thread), thread.subject
 
                 for msg in thread:
                     print "  ", msg.id, msg.number, msg.subject
-                    open("%s-%s.msg" % (thread.id, msg.number), "w").write(ga.getRawMessage(msg.id))
+                    # TODO: Rename "body" to "source".
+                    source = msg.body.replace("\r","").lstrip()
+                    mbox.append("From - Thu Jan 22 22:03:29 1998\n")
+                    mbox.append(source)
+                    mbox.append("\n\n") # TODO: Check if we need either/both?
 
             print
+            import time 
+            open("archive-%s-%s.mbox" % (folderName, time.time()),
+                 "w").writelines(mbox)
         except KeyboardInterrupt:
             print "\n\nDone."
             break
