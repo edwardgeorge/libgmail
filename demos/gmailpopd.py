@@ -74,8 +74,28 @@ class GmailAccountSnapshot:
         for thread in self._unreadThreads:
             for msg in thread:
                 self.unreadMsgs.append(msg)
-                
 
+
+    def retrieveMessage(self, msgNumber, bodyLines = None):
+        """
+
+        Returns an array of lines... (TODO: Decide if we want this.)        
+        """
+        # TODO: Check request is in range...
+        # TODO: Don't retrieve all of the message, just what's needed.
+        msgContent = self.unreadMsgs[msgNumber].source
+
+        msgContent = _massage(msgContent)# TODO: Remove this...
+
+        msgLines = msgContent.split("\r\n")
+
+        if bodyLines is not None:
+            blankIndex = msgLines.index("") # Blank line between header & body.
+            msgLines = msgLines[:blankIndex + 1 + bodyLines]
+
+        return msgLines            
+
+                
 class POPChannel(asynchat.async_chat):
 
     def __init__(self, server, conn, addr):
@@ -186,29 +206,57 @@ class POPChannel(asynchat.async_chat):
         else:
             # TODO: Check request is in range...
             msgNumber = int(arg) - 1 # Argument is 1 based, sequence is 0 based
-            msgContent = snapshot.unreadMsgs[msgNumber].source
-
-            # TODO: Put this message massaging in `GmailMessage.source`
-            #       and standardise how message ends? (e.g. '\r\n' not '\n')
-            msgContent = msgContent.lstrip()
-            msgContent += "\r\n"
-
+            
             self.push('+OK')
 
-            for msgLine in msgContent.split("\r\n"):
-                # Perform "byte-stuffing"...
-                if msgLine.startswith("."):
-                    msgLine = "." + msgLine
+            for msgLine in byteStuff(snapshot.retrieveMessage(msgNumber)):
+                self.push(msgLine)
+
+            self.push('.') # TODO: Make constant...
+
+
+    def pop_TOP(self, arg):
+        """
+        """
+        if not arg:
+            self.push('-ERR: Syntax: RETR msg')
+        else:
+            msgNumber, bodyLines = arg.split(" ")
+            # TODO: Check request is in range...
+            msgNumber = int(msgNumber) - 1 # Argument is 1 based, sequence is 0 based
+            bodyLines = int(bodyLines)
+            
+            self.push('+OK')
+
+            for msgLine in byteStuff(snapshot.retrieveMessage(msgNumber, bodyLines)):
                 self.push(msgLine)
 
             self.push('.') # TODO: Make constant...
 
     
-    def ftp_QUIT(self, arg):
+    def pop_QUIT(self, arg):
         # args is ignored
         self.push('+OK Goodbye')
         self.close_when_done()
 
+
+def byteStuff(lines):
+    """
+    """
+    for line in lines:
+        if line.startswith("."):
+            line = "." + line
+        yield line
+
+
+def _massage(msgContent):
+    """
+    """
+    # TODO: Put this message massaging in `GmailMessage.source`
+    #       and standardise how message ends? (e.g. '\r\n' not '\n')
+    msgContent = msgContent.lstrip()
+    msgContent += "\r\n"
+    return msgContent
 
 
 class POP3Proxy(asyncore.dispatcher):
