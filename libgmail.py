@@ -178,7 +178,7 @@ def _buildURL(**kwargs):
 
 
 
-def _paramsToMime(params, filenames):
+def _paramsToMime(params, filenames, files):
     """
     """
     mimeMsg = MIMEMultipart("form-data")
@@ -193,16 +193,31 @@ def _paramsToMime(params, filenames):
 
         mimeMsg.attach(mimeItem)
 
-    if filenames:
-        for idx, filename in enumerate(filenames):
-            contentType = mimetypes.guess_type(filename)[0]
+    if filenames or files:
+        filenames = filenames or []
+        files = files or []
+        for idx, item in enumerate(filenames + files):
+            # TODO: This is messy, tidy it...
+            if isinstance(item, str):
+                # We assume it's a file path...
+                filename = item
+                contentType = mimetypes.guess_type(filename)[0]
+                payload = open(filename, "rb").read()
+            else:
+                # We assume it's an `email.Message.Message` instance...
+                # TODO: Make more use of the pre-encoded information?
+                filename = item.get_filename()
+                contentType = item.get_content_type()
+                payload = item.get_payload(decode=True)
+                
             if not contentType:
                 contentType = "application/octet-stream"
+                
             mimeItem = MIMEBase(*contentType.split("/"))
             mimeItem.add_header("Content-Disposition", "form-data",
                                 name="file%s" % idx, filename=filename)
             # TODO: Encode the payload?
-            mimeItem.set_payload(open(filename, "rb").read())
+            mimeItem.set_payload(payload)
 
             # TODO: Handle this better...?
             for hdr in ['MIME-Version','Content-Transfer-Encoding']:
@@ -460,7 +475,7 @@ class GmailAccount:
         # Amongst other things, I used the following post to work out this:
         # <http://groups.google.com/groups?
         #  selm=mailman.1047080233.20095.python-list%40python.org>
-        mimeMessage = _paramsToMime(params, msg.filenames)
+        mimeMessage = _paramsToMime(params, msg.filenames, msg.files)
 
         #### TODO: Ughh, tidy all this up & do it better...
         ## This horrible mess is here for two main reasons:
@@ -708,10 +723,15 @@ class GmailComposedMessage:
     """
 
     def __init__(self, to, subject, body, cc = None, bcc = None,
-                 filenames = None):
+                 filenames = None, files = None):
         """
 
-          `filenames` - the file paths of the files to attach.
+          `filenames` - list of the file paths of the files to attach.
+          `files` - list of objects implementing sub-set of
+                    `email.Message.Message` interface (`get_filename`,
+                    `get_content_type`, `get_payload`). This is to
+                    allow use of payloads from Message instances.
+                    TODO: Change this to be simpler class we define ourselves?
         """
         self.to = to
         self.subject = subject
@@ -719,6 +739,7 @@ class GmailComposedMessage:
         self.cc = cc
         self.bcc = bcc
         self.filenames = filenames
+        self.files = files
 
 
 

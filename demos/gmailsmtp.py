@@ -41,13 +41,29 @@ class GmailSmtpProxy(smtpd.SMTPServer):
         """
         """
         result = None
+
+        body = ""
+        attachments = []
         
         msg = email.message_from_string(data)
 
-        # TODO: Handle attachments.
-        gmsg = libgmail.GmailComposedMessage(msg["To"],
-                                             msg["Subject"],
-                                             msg.get_payload())
+        #import pdb; pdb.set_trace()
+
+        # Handle attachments, if present.
+        if msg.is_multipart():
+            for part in msg.get_payload():
+                if part.get_content_type() == "text/plain":
+                    # TODO: Do we need to handle "message/rfc822" too?
+                    body = part.get_payload()
+                else:
+                    attachments.append(part)
+        else:
+            body = msg.get_payload()
+
+        gmsg = libgmail.GmailComposedMessage(to = msg["To"],
+                                             subject = msg["Subject"],
+                                             body = body,
+                                             files = attachments)
 
         # Don't drop connection until we know we delivered...
         if not ga.sendMessage(gmsg):
