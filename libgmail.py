@@ -145,22 +145,6 @@ def _parsePage(pageContent):
 
 
 
-OFFSET_MSG_ID = 0
-OFFSET_MSG_SUBJECT = 6
-class GmailMessage:
-    """
-    """
-    
-    def __init__(self, msgData):
-        """
-        """
-        self.id = msgData[OFFSET_MSG_ID]
-        self.subject = msgData[OFFSET_MSG_SUBJECT]
-
-        # TODO: Populate additional fields & cache...(?)
-        
-
-
 class GmailAccount:
     """
     """
@@ -235,13 +219,12 @@ class GmailAccount:
         return items
 
 
-
     def getFolder(self, folderName):
         """
 
         Folders contain conversation/message threads.
 
-          `folderName` -- As set in GMail interface.
+          `folderName` -- As set in Gmail interface.
 
         Returns a `GmailFolder` instance.
         """
@@ -249,11 +232,11 @@ class GmailAccount:
 
         items = self._parsePage(URL_FOLDER_BASE % folderName)
 
-        return GmailFolder([GmailThread(thread)
-                            for thread in items[D_THREAD]])
+        # TODO: Option to get *all* threads if multiple pages are used.
+
+        return GmailFolder(self, folderName, items[D_THREAD])
 
     
-
     def getQuotaInfo(self):
         """
 
@@ -272,53 +255,26 @@ class GmailAccount:
         """
         URL_BASE_RAW_MESSAGE = "https://gmail.google.com/gmail?view=om&th=%s"
 
-        pageData = self._retrieveURL(URL_BASE_RAW_MESSAGE % msgId)
+        pageData = self._retrievePage(URL_BASE_RAW_MESSAGE % msgId)
 
         return pageData
 
-
-class GmailThread:
-    """
-    """
-
-    def __init__(self, threadInfo):
-        """
-        """
-        self.id = threadInfo[T_THREADID] # TODO: Check if this actually
-                                               #       changes when new
-                                               #       messages arrive.
-        self.subject = threadInfo[T_SUBJECT_HTML]
-
-        # TODO: Store other info?
-        # TODO: Extract number of messages in thread/conversation.
-
-        self._authors = threadInfo[T_AUTHORS_HTML]
-
-        try:
-            # TODO: Find out if this information can be found another way...
-            self._length = int(re.search("\((\d+?)\)\Z",
-                                         self._authors).group(1))
-        except AttributeError:
-            # If there's no message count then the thread only has one message.
-            self._length = 1
-
-    def __len__(self):
-        """
-        """
-        return self._length
-            
 
 
 class GmailFolder:
     """
     """
 
-    def __init__(self, threads):
+    def __init__(self, account, folderName, threadsInfo):
         """
 
-          `threads` -- A sequence of thread instances.
+          `threadsInfo` -- As returned from Gmail.
         """
-        self._threads = threads
+        self._account = account
+        self.folderName = folderName
+
+        self._threads = [GmailThread(self, thread)
+                         for thread in threadsInfo]
 
 
     def __iter__(self):
@@ -327,10 +283,125 @@ class GmailFolder:
         return iter(self._threads)
 
 
-FOLDER_NAMES = [FOLDER_INBOX, FOLDER_SENT] # TODO: Get these on the fly.
+    def getMessages(self, thread):
+        """
+        """
+        # NOTE: To my mind this method should probably be part of
+        #       `GmailThread`, but for some reason the folder name/search
+        #       needs to be supplied to retrieve the conversation view,
+        #       so it's going here for the moment.
+
+        # TODO: Change how url is constructed & retrieved...
+        URL_CONVERSATION_BASE = \
+                       "https://gmail.google.com/gmail?search=%s&view=cv&th=%s"
+
+        items = self._account._parsePage(URL_CONVERSATION_BASE %
+                                         (self.folderName, thread.id))
+
+        # TODO: Handle this better?
+
+        msgsInfo = items[D_MSGINFO]
+
+        # TODO: Handle special case of only one message in thread better?
+        if type(msgsInfo) != type([]):
+            msgsInfo = [msgsInfo]
+
+        return [GmailMessage(thread, msg)
+                for msg in msgsInfo]
+
+
+class GmailThread:
+    """
+
+
+
+    Note: As far as I can tell, the "canonical" thread id is always the same
+          as the id of the last message in the thread. But it appears that
+          the id of any message in the thread can be used to retrieve
+          the thread information.
+    
+    """
+
+    def __init__(self, parent, threadInfo):
+        """
+        """
+        self._parent = parent
+        
+        self.id = threadInfo[T_THREADID] # TODO: Change when canonical updated?
+        self.subject = threadInfo[T_SUBJECT_HTML]
+
+        # TODO: Store other info?
+        # Extract number of messages in thread/conversation.
+
+        self._authors = threadInfo[T_AUTHORS_HTML]
+
+        try:
+            # TODO: Find out if this information can be found another way...
+            #       (Without another page request.)
+            self._length = int(re.search("\((\d+?)\)\Z",
+                                         self._authors).group(1))
+        except AttributeError:
+            # If there's no message count then the thread only has one message.
+            self._length = 1
+
+        # TODO: Store information known about the last message  (e.g. id)?
+        self._messages = []
+        
+
+    def __len__(self):
+        """
+        """
+        return self._length
+
+
+    def __iter__(self):
+        """
+        """
+        if not self._messages:
+            self._messages = self._parent.getMessages(self)
+            
+        return iter(self._messages)
+
+
+        
+class GmailMessage(object):
+    """
+    """
+    
+    def __init__(self, thread, msgData):
+        """
+        """
+        self._thread = thread
+        
+        self.id = msgData[MI_MSGID]
+        self.number = msgData[MI_NUM]
+        self.subject = msgData[MI_SUBJECT]
+
+        # TODO: Populate additional fields & cache...(?)
+
+        self._body = None
+
+
+    def _getBody(self):
+        """
+        """
+        if not self._body:
+            # TODO: Ummm, do this a *little* more nicely...
+            self._body = self._thread._parent._account.getRawMessage(self.id)
+
+        return self._body
+
+    body = property(_getBody, doc = "")
+        
+
+
+
+FOLDER_NAMES = ['all', FOLDER_INBOX, FOLDER_SENT] # TODO: Get these on the fly.
 if __name__ == "__main__":
-    name = raw_input("GMail account name: ")
-    pw = raw_input("Password: ")
+    from getpass import getpass
+    
+    name = raw_input("Gmail account name: ")
+    pw = getpass("Password: ")
 
     ga = GmailAccount(name, pw)
 
@@ -340,12 +411,16 @@ if __name__ == "__main__":
 
     print "Log in successful.\n"
 
-    print "%s of %s used. (%s)\n" % ga.getQuotaInfo()
+    # TODO: Use properties instead?
+    quotaInfo = ga.getQuotaInfo()
+    quotaMbUsed = quotaInfo[QU_SPACEUSED]
+    quotaMbTotal = quotaInfo[QU_QUOTA]
+    quotaPercent = quotaInfo[QU_PERCENT]
+    print "%s of %s used. (%s)\n" % (quotaMbUsed, quotaMbTotal, quotaPercent)
 
     while 1:
         try:
             print "Select folder to list: (Ctrl-C to exit)"
-            #print "(NOTE: This will display the content of *ALL* messages.)"
             for optionId, folderName in enumerate(FOLDER_NAMES):
                 print "  %d. %s" % (optionId, folderName)
 
@@ -355,10 +430,11 @@ if __name__ == "__main__":
 
             print
             for thread in folder:
-                #print "================================"
-                print thread.id, thread.subject, len(thread)
-                #print ga.getRawMessage(msg.id)
-                #print "================================"
+                print
+                print thread.id, len(thread), thread.subject
+                for msg in thread:
+                    print "  ", msg.id, msg.number, msg.subject
+                    #print msg.body
 
             print
         except KeyboardInterrupt:
