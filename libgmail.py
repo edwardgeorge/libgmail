@@ -2,7 +2,7 @@
 #
 # libgmail -- Gmail access via Python
 #
-# Version: 0.0.6 (15 July 2004)
+# Version: 0.0.7 (XX July 2004)
 #
 # Author: follower@myrealbox.com
 #
@@ -349,8 +349,19 @@ class GmailAccount:
           `folderName` -- As set in Gmail interface.
 
         Returns a `GmailSearchResult` instance.
+
+        *** TODO: Change all "getMessagesByX" to "getThreadsByX"? ***
         """
         return self._parseThreadSearch(folderName, allPages = allPages)
+
+
+    def getMessagesByQuery(self, query,  allPages = False):
+        """
+
+        Returns a `GmailSearchResult` instance.
+        """
+        return self._parseThreadSearch(U_QUERY_SEARCH, q = query,
+                                       allPages = allPages)
 
     
     def getQuotaInfo(self, refresh = False):
@@ -511,7 +522,9 @@ class GmailThread:
     def __init__(self, parent, threadInfo):
         """
         """
+        # TODO Handle this better?
         self._parent = parent
+        self._account = self._parent._account
         
         self.id = threadInfo[T_THREADID] # TODO: Change when canonical updated?
         self.subject = threadInfo[T_SUBJECT_HTML]
@@ -532,6 +545,7 @@ class GmailThread:
 
         # TODO: Store information known about the last message  (e.g. id)?
         self._messages = []
+
         
 
     def __len__(self):
@@ -554,10 +568,10 @@ class GmailThread:
         """
         # TODO: Do this better.
         # TODO: Specify the query folder using our specific search?
-        items = self._parent._account._parseSearchResult(U_QUERY_SEARCH,
+        items = self._account._parseSearchResult(U_QUERY_SEARCH,
                                                  view = U_CONVERSATION_VIEW,
-                                                         th = thread.id,
-                                                         q = "in:anywhere")
+                                                 th = thread.id,
+                                                 q = "in:anywhere")
 
         # TODO: Handle this better?
         msgsInfo = items[D_MSGINFO]
@@ -574,14 +588,19 @@ class GmailMessage(object):
     """
     """
     
-    def __init__(self, thread, msgData):
+    def __init__(self, parent, msgData):
         """
         """
-        self._thread = thread
+        # TODO Handle this better?
+        self._parent = parent
+        self._account = self._parent._account
         
         self.id = msgData[MI_MSGID]
         self.number = msgData[MI_NUM]
         self.subject = msgData[MI_SUBJECT]
+
+        self.attachments = [GmailAttachment(self, attachmentInfo)
+                            for attachmentInfo in msgData[MI_ATTACHINFO]]
 
         # TODO: Populate additional fields & cache...(?)
 
@@ -592,13 +611,47 @@ class GmailMessage(object):
         """
         """
         if not self._source:
-            # TODO: Ummm, do this a *little* more nicely...
-            self._source = self._thread._parent._account.getRawMessage(self.id)
+            # TODO: Do this more nicely...?
+            self._source = self._account.getRawMessage(self.id)
 
         return self._source
 
     source = property(_getSource, doc = "")
         
+
+
+class GmailAttachment:
+    """
+    """
+
+    def __init__(self, parent, attachmentInfo):
+        """
+        """
+        # TODO Handle this better?
+        self._parent = parent
+        self._account = self._parent._account
+
+        self.id = attachmentInfo[A_ID]
+        self.filename = attachmentInfo[A_FILENAME]
+        self.mimetype = attachmentInfo[A_MIMETYPE]
+        self.filesize = attachmentInfo[A_FILESIZE]
+
+        self._content = None
+
+
+    def _getContent(self):
+        """
+        """
+        if not self._content:
+            # TODO: Do this a more nicely...?
+            self._content = self._account._retrievePage(
+                _buildURL(view=U_ATTACHMENT_VIEW, disp="attd",
+                          attid=self.id, th=self._parent._parent.id))
+            
+        return self._content
+
+    content = property(_getContent, doc = "")
+
 
 class GmailComposedMessage:
     """
