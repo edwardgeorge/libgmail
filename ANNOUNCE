@@ -1,0 +1,35 @@
+[ANN] libgmail 0.0.3 -- Gmail access via Python
+
+libgmail -- Python binding for Google's Gmail service
+
+<http://libgmail.sf.net/>
+
+The `libgmail` project is a pure Python binding to provide access to
+Google's Gmail web-mail service.
+
+The library currently ships with one demonstration utility to archive
+messages from an Gmail account into mbox files, suitable for importing
+into a local email client.
+
+License: GPL 2.0
+
+Major changes since 0.0.1 & 0.0.2:
+
+  * Archive Gmail to mbox utility.
+
+  * No longer requires external ClientCookie package.
+
+  * Uses constants extracted directly from Gmail Javascript,
+    and includes utility to repeat the process if required.
+
+  * Code & API refactoring.
+
+  * Lazy retrieval and caching of thread and message data.
+
+  * Sourceforge project & home page.
+
+ 
+
+<P><A HREF="http://your.url.here">PackageName 1.0</A> - short
+          description of not more than one sentence.  (DD-Mon-YY)
+

@@ -29,9 +29,14 @@ FOLDER_NAMES = ['all',
                 libgmail.FOLDER_INBOX,
                 libgmail.FOLDER_SENT] # TODO: Get on the fly.
 if __name__ == "__main__":
+    import sys
     from getpass import getpass
-    
-    name = raw_input("Gmail account name: ")
+
+    try:
+        name = sys.argv[1]
+    except IndexError:
+        name = raw_input("Gmail account name: ")
+        
     pw = getpass("Password: ")
 
     ga = libgmail.GmailAccount(name, pw)

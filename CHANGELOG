@@ -1,3 +1,19 @@
+== Version: 0.0.3 (8 July 2004) ==
+
+libgmail.py
+ * Allow username to be specified on the command line instead of prompting.
+ * Rough special case handling of when more than one set of thread information data is present on a page (seemed to occur when using 'all' search after a certain number of items). TODO: Make this fix work at the page parsing level, but splitting all tuples into individual items.
+ * Add cookie handling code to enable us to remove requirement for ClientCookie package.
+
+demos/archive.py
+ * *Extremely* rough mbox creation--turns out the mails retrieved had '\r' characters at the end of the headers. The mbox file appears to be successfully imported by OS X's Mail.app client.
+
+
+== Version: 0.0.2a (~6 July 2004) ==
+
+* No code change, renamed to try to avoid SourceForge mirroring problems.
+
+
 == Version: 0.0.2 (5 July 2004) ==
 
 constants.py
