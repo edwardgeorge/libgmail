@@ -1,6 +1,8 @@
 #
 # Generated file -- DO NOT EDIT
 #
+# Note: This file is now edited! 2005-04-25
+#
 # constants.py -- Useful constants extracted from Gmail Javascript code
 #
 # Source version: 44f09303f2d4f76f
@@ -46,8 +48,8 @@ TS_NUM = 1
 TS_TOTAL = 2
 TS_ESTIMATES = 3
 TS_TITLE = 4
-TS_TIMESTAMP = 5
-TS_TOTAL_MSGS = 6
+TS_TIMESTAMP = 5 + 1
+TS_TOTAL_MSGS = 6 + 1
 T_THREADID = 0
 T_UNREAD = 1
 T_STAR = 2
