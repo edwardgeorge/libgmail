@@ -6,6 +6,11 @@
 #
 # Author: follower@myrealbox.com
 #
+# Contacts support added by wdaher@mit.edu and Stas Z
+# (with massive initial help from 
+#  Adrian Holovaty's 'gmail.py' 
+#  and the Johnvey Gmail API)
+#
 # License: GPL 2.0
 #
 # Thanks:
@@ -27,7 +32,8 @@
 # * Folders contain message threads, not individual messages. At present I
 #   do not know any way to list all messages without processing thread list.
 #
-
+"""This is a fork used by GmailAgent"""
+LG_DEBUG=0
 from constants import *
 
 import os
@@ -36,12 +42,11 @@ import urllib
 import urllib2
 import logging
 import mimetypes
+import types
 
 from email.MIMEBase import MIMEBase
 from email.MIMEText import MIMEText
 from email.MIMEMultipart import MIMEMultipart
-
-#logging.getLogger().setLevel(logging.DEBUG)
 
 URL_LOGIN = "https://www.google.com/accounts/ServiceLoginBoxAuth"
 URL_GMAIL = "https://gmail.google.com/gmail"
@@ -96,7 +101,7 @@ def _parsePage(pageContent):
             else:
                 parsedValue = value
         except SyntaxError:
-            logging.warning("Could not parse item `%s` as it was `%s`." %
+            if LG_DEBUG: logging.warning("Could not parse item `%s` as it was `%s`." %
                             (name, value))
         else:
             if itemsDict.has_key(name):
@@ -114,7 +119,7 @@ def _parsePage(pageContent):
 
     global versionWarned
     if itemsDict[D_VERSION] != js_version and not versionWarned:
-        logging.debug("Live Javascript and constants file versions differ.")
+        if LG_DEBUG: logging.debug("Live Javascript and constants file versions differ.")
         versionWarned = True
 
     return itemsDict
@@ -144,10 +149,10 @@ class CookieJar:
         # TODO: Do this all more nicely?
         for cookie in response.headers.getheaders('Set-Cookie'):
             name, value = (cookie.split("=", 1) + [""])[:2]
-            logging.debug("Extracted cookie `%s`" % (name))
+            if LG_DEBUG: logging.debug("Extracted cookie `%s`" % (name))
             if not nameFilter or name in nameFilter:
                 self._cookies[name] = value.split(";")[0]
-                logging.debug("Stored cookie `%s` value `%s`" %
+                if LG_DEBUG: logging.debug("Stored cookie `%s` value `%s`" %
                               (name, self._cookies[name]))
 
 
@@ -229,8 +234,17 @@ class GmailLoginFailure(Exception):
     """
     Raised whenever the login process fails--could be wrong username/password,
     or Gmail service error, for example.
+    Extract the error message like this:
+    try:
+        foobar 
+    except GmailLoginFailure,e:
+        mesg = e.message# or
+        print e# uses the __str__
     """
-    
+    def __init__(self,message):
+        self.message = message
+    def __str__(self):
+        return repr(self.message)
 
 class GmailAccount:
     """
@@ -268,19 +282,20 @@ class GmailAccount:
     
         headers = {'Host': 'www.google.com',
                    'User-Agent': 'User-Agent: Mozilla/5.0 (compatible;)'}
-
+        
         req = urllib2.Request(URL_LOGIN, data=data, headers=headers)
         pageData = self._retrievePage(req)
-
+        
         # TODO: Tidy this up?
         # This requests the page that provides the required "GV" cookie.
         RE_PAGE_REDIRECT = 'top\.location\W=\W"CheckCookie\?continue=([^"]+)'
         # TODO: Catch more failure exceptions here...?
+        
         try:
             redirectURL = urllib.unquote(re.search(RE_PAGE_REDIRECT,
                                                    pageData).group(1))
         except AttributeError:
-            raise GmailLoginFailure
+            raise GmailLoginFailure("Login failed. (Wrong username/password?)")
         # We aren't concerned with the actual content of this page,
         # just the cookie that is returned with it.
         pageData = self._retrievePage(redirectURL)
@@ -691,8 +706,326 @@ class GmailAccount:
 
         return draftMsg
 
+    ## CONTACTS SUPPORT
+    def getContacts(self):
+        """
+        Returns a GmailContactList object
+        that has all the contacts in it as
+        GmailContacts
+        """
+        contactList = []
+        def addEntry(entry):
+            """
+            Add an entry to our contact list
+            """
+            # First, make sure the entry has at least an acceptable length
+            # (otherwise it doesn't have all the data we expect/need)
+            #
+            # We could probably be smarter about this... like if elements
+            # 1,2,and 4 are present, then just run with that. Though, we probably
+            # shouldn't rely on partially-well-formed data structures -- because
+            # if they change, chances are that something *bigger* in gmail changed
+            # that we're not ready to deal with
+            if len(entry) >= 6:
+                newGmailContact = GmailContact(entry[1], entry[2], entry[4], entry[5])
+                contactList.append(newGmailContact)
+
+        def extractEntries(possibleData):
+            """
+            Strip out entries from this potential entry chunk
+            (in an awesome recursive fashion)
+            """
+            # possibleData is either going to be an entry (which is a list),
+            # a tuple with up to 15 entries in it,
+            # or a list of tuples, each of which has up to 15 entries.
+            # So deal accordingly.
+            if type(possibleData) == types.ListType:
+                # Ok, either this is just one entry, or a list of tuples
+                # If this is just one entry, the first element
+                # will be 'ce'
+                if len(possibleData) >= 1 and possibleData[0]=='ce':
+                    addEntry(possibleData)
+                else:
+                    # Ok, this is the list of tuples
+                    for mytuple in possibleData:
+                        extractEntries(mytuple)
+            elif type(possibleData) == types.TupleType:
+                # Ok, this is a tuple of entries, probably
+                for entry in possibleData:
+                    extractEntries(entry)
+            elif type(possibleData) == types.StringType and possibleData == '':
+                # This is fine, empty addressbook
+                pass
+            else:
+                # We have no idea what this is
+                # Wouldn't it be better to replace the 'print' with a call to 'logging'
+                # like the rest of this lib does? (stas)
+                print "\n\n"
+                print "** We shouldn't be here! **"
+                print "DEBUG INFO:"
+                print "type of myData[a]:", type(possibleData)
+                print "myData[a]", myData['a']
+                print "ContactList:", contactList
+                for x in contactList:
+                    print "Entry:",x
+                raise RuntimeError("Gmail must have changed something. Please notify the libgmail developers.")
         
+        # pnl = a is necessary to get *all* contacts?
+        myUrl = _buildURL(view='cl',search='contacts', pnl='a')
+        myData = self._parsePage(myUrl)
+        # This comes back with a dictionary
+        # with entry 'a'
+        addresses = myData['cl']
+        extractEntries(addresses)
+##        print "rawPage", self._retrievePage(myUrl)
+##        print "\n\n"
+##        print "myData", myData
+        #print "mydata[a]", myData['a']
+        #print "cl", contactList
+        #for x in contactList:
+        #    print "x:",x
+        return GmailContactList(contactList)
+
+    def addContact(self, name, email, notes=''):
+        """
+        Attempts to add a contact to the gmail
+        address book. Returns true if successful,
+        false otherwise
+        """
+        # TODO: In the ideal world, we'd extract these specific
+        # constants into a nice constants file
         
+        # This mostly comes from the Johnvey Gmail API,
+        # but also from the gmail.py cited earlier
+        myURL = _buildURL(view='up')
+        # print 'gmailat cookie', self._cookieJar._cookies['GMAIL_AT']
+        
+        myData = urllib.urlencode({
+                                   'act':'ec',
+                                   'at': self._cookieJar._cookies['GMAIL_AT'], # Cookie data?
+                                   'ct_nm': name,
+                                   'ct_em':email,
+                                   'ctf_n':notes,
+                                   'ct_id':-1,
+                                   }) 
+        #print 'my data:', myData
+        request = urllib2.Request(myURL,
+                                  data = myData)
+        pageData = self._retrievePage(request)
+
+        if pageData.find("The contact was successfully added") == -1:
+            print pageData
+            return False
+        else:
+            return True
+
+    def _removeContactById(self, id):
+        """
+        Attempts to remove the contact that occupies
+        id "id" from the gmail address book.
+        Returns True if successful,
+        False otherwise.
+
+        This is a little dangerous since you don't really
+        know who you're deleting. Really,
+        this should return the name or something of the
+        person we just killed.
+
+        Don't call this method.
+        You should be using removeContact instead.
+        """
+        myURL = _buildURL(search='contacts', ct_id = id, c=id, act='dc', at=self._cookieJar._cookies['GMAIL_AT'], view='up')
+        pageData = self._retrievePage(myURL)
+
+        if pageData.find("The contact has been deleted") == -1:
+            # print pageData
+            return False
+        else:
+            # print pageData
+            return True
+
+    def removeContact(self, gmailContact):
+        """
+        Attempts to remove the GmailContact passed in
+        Returns True if successful, False otherwise.
+        """
+        # Let's re-fetch the contact list to make
+        # sure we're really deleting the guy
+        # we think we're deleting
+        newContactList = self.getContacts()
+        newVersionOfPersonToDelete = newContactList.getContactById(gmailContact.getId())
+        # Ok, now we need to ensure that gmailContact
+        # is the same as newVersionOfPersonToDelete
+        # and then we can go ahead and delete him/her
+        if (gmailContact == newVersionOfPersonToDelete):
+            return self._removeContactById(gmailContact.getId())
+        else:
+            # We have a cache coherency problem -- someone
+            # else now occupies this ID slot.
+            # TODO: Perhaps signal this in some nice way
+            #       to the end user?
+            
+            print "Unable to delete."
+            print "Old version of person:",gmailContact
+            print "New version of person:",newVersionOfPersonToDelete
+            return False
+
+
+class GmailContact:
+    """
+    Class for storing a Gmail Contacts list entry
+    """
+    def __init__(self, id, name, email, notes=''):
+        self.id = id
+        self.name = name
+        self.email = email
+        self.notes = notes
+    def __str__(self):
+        return "%s %s %s %s" % (self.id, self.name, self.email, self.notes)
+    def __eq__(self, other):
+        if not isinstance(other, GmailContact):
+            return False
+        return (self.getId() == other.getId()) and \
+               (self.getName() == other.getName()) and \
+               (self.getEmail() == other.getEmail()) and \
+               (self.getNotes() == other.getNotes())
+    def getId(self):
+        return self.id
+    def getName(self):
+        return self.name
+    def getEmail(self):
+        return self.email
+    def getNotes(self):
+        return self.notes
+    def getVCard(self):
+        """Returns a vCard 3.0 for this
+        contact, as a string"""
+        vcard = "BEGIN:VCARD\n"
+        vcard += "VERSION:3.0\n"
+        # Deal with multiline notes
+        vcard += "NOTE:%s\n" % self.getNotes().replace("\n","\\n")
+        # Fake-out N by splitting up whatever we get out of getName
+        # This might not always do 'the right thing'
+        # but it's a *reasonable* compromise
+        fullname = self.getName().split()
+        fullname.reverse()
+        vcard += "N:%s" % ';'.join(fullname) + "\n"
+        vcard += "FN:%s\n" % self.getName()
+        vcard += "EMAIL;TYPE=INTERNET:%s\n" % self.getEmail()
+        vcard += "END:VCARD\n\n"
+        # Final newline in case we want to put more than one in a file?
+        # Yes :-)
+        return vcard
+
+class GmailContactList:
+    """
+    Class for storing an entire Gmail contacts list
+    and retrieving contacts by Id, Email address, and name
+    """
+    def __init__(self, contactList):
+        self.contactList = contactList
+    def __str__(self):
+        return '\n'.join([str(item) for item in self.contactList])
+    def getCount(self):
+        """
+        Returns number of contacts
+        """
+        return len(self.contactList)
+    def getAllContacts(self):
+        """
+        Returns an array of all the
+        GmailContacts
+        """
+        return self.contactList
+    def getContactByName(self, name):
+        """
+        Gets the first contact in the
+        address book whose name is 'name'.
+
+        Returns False if no contact
+        could be found
+        """
+        nameList = self.getContactListByName(name)
+        if len(nameList) > 0:
+            return nameList[0]
+        else:
+            return False
+    def getContactByEmail(self, email):
+        """
+        Gets the first contact in the
+        address book whose name is 'email'.
+
+        Returns False if no contact
+        could be found
+        """
+        emailList = self.getContactListByEmail(email)
+        if len(emailList) > 0:
+            return emailList[0]
+        else:
+            return False
+    def getContactById(self, myId):
+        """
+        Gets the first contact in the
+        address book whose id is 'myId'.
+
+        REMEMBER: ID IS A STRING
+
+        Returns False if no contact
+        could be found
+        """
+        idList = self.getContactListById(myId)
+        if len(idList) > 0:
+            return idList[0]
+        else:
+            return False
+    def getContactListByName(self, name):
+        """
+        This function returns a LIST
+        of GmailContacts whose name is
+        'name'. We expect there only to
+        be one, but just in case!
+
+        Returns an empty list if no contacts
+        were found
+        """
+        nameList = []
+        for entry in self.contactList:
+            if entry.getName() == name:
+                nameList.append(entry)
+        return nameList
+    def getContactListByEmail(self, email):
+        """
+        This function returns a LIST
+        of GmailContacts whose email is
+        'email'. We expect there only to
+        be one, but just in case!
+
+        Returns an empty list if no contacts
+        were found
+        """
+        emailList = []
+        for entry in self.contactList:
+            if entry.getEmail() == email:
+                emailList.append(entry)
+        return emailList
+    def getContactListById(self, myId):
+        """
+        This function returns a LIST
+        of GmailContacts whose id is
+        'myId'. We expect there only to
+        be one, but just in case!
+
+        Remember: ID IS A STRING
+
+        Returns an empty list if no contacts
+        were found
+        """
+        idList = []
+        for entry in self.contactList:
+            if entry.getId() == myId:
+                idList.append(entry)
+        return idList
+    
 def _splitBunches(infoItems):
     """
 
@@ -1041,8 +1374,8 @@ if __name__ == "__main__":
 
     try:
         ga.login()
-    except GmailLoginFailure:
-        print "\nLogin failed. (Wrong username/password?)"
+    except GmailLoginFailure,e:
+        print "\nLogin failed. (%s)" % e.message
     else:
         print "Login successful.\n"
 
