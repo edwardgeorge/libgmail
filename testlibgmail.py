@@ -47,7 +47,7 @@ class ContactsTests(unittest.TestCase):
         self.assertEqual(contact.getEmail(), email, "Returned email isn't the one we created initially")
         self.assertEqual(contact.getNotes(), notes, "Returned note isn't the one we created initially")
     
-    def test2_AdvancedAddContact():
+    def test2_AdvancedAddContact(self):
         """Create and retrieve a contact with a newline in the notes"""
         name = 'W4533m'
         email = 'fake-person@gmail.com'
@@ -124,33 +124,39 @@ class ContactsTests(unittest.TestCase):
         myContactList = account.getContacts()
         self.assertEqual(myContactList.getCount(), 0)
 
-    def test7_MediumGetAndRemove(self):
-        """Add 14 addresses and remove them again"""
-        count = 14
-        for x in range(count):
-            account.addContact(str(x), str(x))
-        myContactList = account.getContacts()
-        self.assertEqual(myContactList.getCount(), count)
+## MediumGetAndRemove and LargeGetAndRemove pound
+## gmail's servers faster than they'd like to be accessed,
+## so this usually gets our account suspended, it seems.
+## If you really want to test that these large gets/sets work,
+## maybe insert a delay and run them? Doesn't really make 
+## sense to run them every time though
+#     def test7_MediumGetAndRemove(self):
+#         """Add 14 addresses and remove them again"""
+#         count = 14
+#         for x in range(count):
+#             account.addContact(str(x), str(x))
+#         myContactList = account.getContacts()
+#         self.assertEqual(myContactList.getCount(), count)
 
-        # Now remove them all
-        for x in range(count):
-            self.assertTrue(account.removeContact(myContactList.getContactByName(str(x))))
-        myContactList = account.getContacts()
-        self.assertEqual(myContactList.getCount(), 0)
+#         # Now remove them all
+#         for x in range(count):
+#             self.assertTrue(account.removeContact(myContactList.getContactByName(str(x))))
+#         myContactList = account.getContacts()
+#         self.assertEqual(myContactList.getCount(), 0)
 
-    def test8_LargeGetAndRemove(self):
-        """Add 25 addresses and remove them again"""
-        count = 25
-        for x in range(count):
-            account.addContact(str(x), str(x))
-        myContactList = account.getContacts()
-        self.assertEqual(myContactList.getCount(), count)
+#     def test8_LargeGetAndRemove(self):
+#         """Add 25 addresses and remove them again"""
+#         count = 25
+#         for x in range(count):
+#             account.addContact(str(x), str(x))
+#         myContactList = account.getContacts()
+#         self.assertEqual(myContactList.getCount(), count)
 
-        # Now remove them all
-        for x in range(count):
-            self.assertTrue(account.removeContact(myContactList.getContactByName(str(x))))
-        myContactList = account.getContacts()
-        self.assertEqual(myContactList.getCount(), 0)
+#         # Now remove them all
+#         for x in range(count):
+#             self.assertTrue(account.removeContact(myContactList.getContactByName(str(x))))
+#         myContactList = account.getContacts()
+#         self.assertEqual(myContactList.getCount(), 0)
 
     def test9_vCard(self):
         """Test vCard export"""
@@ -163,8 +169,10 @@ N:Daher;Waseem
 FN:Waseem Daher
 EMAIL;TYPE=INTERNET:wdaher@mit.edu
 END:VCARD
+
 """
         self.assertEqual(vcard, expectedVCard, "getVCard() did not export what we expected for Waseem")
+	
 
         # Test multi-line NOTEs
         bob = GmailContact("0", "BillyJo", "billy@jo.net", "I like multilines\nwoo")
