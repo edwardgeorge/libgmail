@@ -288,7 +288,7 @@ class GmailAccount:
         
         # TODO: Tidy this up?
         # This requests the page that provides the required "GV" cookie.
-        RE_PAGE_REDIRECT = 'top\.location\W=\W"CheckCookie\?continue=([^"]+)'
+        RE_PAGE_REDIRECT = 'top\.location\W=.*CheckCookie\?continue=([^"]+)'
         # TODO: Catch more failure exceptions here...?
         
         try:
