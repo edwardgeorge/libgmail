@@ -1,3 +1,12 @@
+== Version: 0.0.9 ==
+libgmail.py
+ * Added contacts support. --WD--
+ * Added contacts test suite. --WD--
+ * Added finer-grained debugging control --WD--
+ * Applied patch that handles login redirect URL properly now
+   Login now works. --WD--
+ * Removed fork message. It was a left over from the initial forking. --SZ--
+
 == Version: 0.0.8 (23 August 2004) ==
 libgmail.py
  *  Fixed login to work again after it was broken by a Gmail change.

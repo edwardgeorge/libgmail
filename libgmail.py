@@ -32,7 +32,7 @@
 # * Folders contain message threads, not individual messages. At present I
 #   do not know any way to list all messages without processing thread list.
 #
-"""This is a fork used by GmailAgent"""
+
 LG_DEBUG=0
 from constants import *
 
