@@ -1,3 +1,16 @@
+Please refer to the libgmail website or project page at sourceforge if
+you encouter problems using libgmail.
+http://libgmail.sf.net
+http://sourceforge.net/projects/libgmail/
+
+You can contact us by email:
+stas AT linux DOT isbeter DOT nl
+wdaher AT mit DOT edu
+follower AT myrealbox DOT com
+
+-----------------------------------------------
+Possible usage:
+
 Run this:
 
   python libgmail.py

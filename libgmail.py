@@ -9,6 +9,7 @@
 # Contacts support added by wdaher@mit.edu and Stas Z
 # (with massive initial help from 
 #  Adrian Holovaty's 'gmail.py' 
+#  Adrian Holovaty's 'gmail.py' 
 #  and the Johnvey Gmail API)
 #
 # License: GPL 2.0
