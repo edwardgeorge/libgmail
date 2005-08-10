@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
 # Setup script for the libgmail package
+# Usage: 
+# To create a source package; python setup.py sdist
+# To install to your system; python setup.py install
 
 from distutils.core import setup
 mods = ['libgmail','constants']
