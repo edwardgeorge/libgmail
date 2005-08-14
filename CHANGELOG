@@ -1,4 +1,4 @@
-== Version: 0.0.9 ==
+== Version: 0.1.0 ==
 libgmail.py
  * Added contacts support. --WD--
  * Added contacts test suite. --WD--
@@ -6,6 +6,9 @@ libgmail.py
  * Applied patch that handles login redirect URL properly now
    Login now works. --WD--
  * Removed fork message. It was a left over from the initial forking. --SZ--
+
+constants.py
+ * Renamed to lgconstants.py to avoid name conflicts --WD--
 
 == Version: 0.0.8 (23 August 2004) ==
 libgmail.py

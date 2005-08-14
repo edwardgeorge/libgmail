@@ -1,6 +1,6 @@
 COPYING
 README
 CHANGELOG
-constants.py
+lgconstants.py
 libgmail.py
 setup.py
