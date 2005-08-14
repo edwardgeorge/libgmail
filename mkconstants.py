@@ -20,7 +20,7 @@ import re
 import sys
 import time
 
-OUTPUT_FILENAME = "constants.py"
+OUTPUT_FILENAME = "lgconstants.py"
 
 # These enumerations start at 1 rather than 0 -- I haven't looked into
 # why they're are different. We want them to work correctly for Python

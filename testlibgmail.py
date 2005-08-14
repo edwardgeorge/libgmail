@@ -1,3 +1,4 @@
+#!/usr/bin/python2.3
 """
 libgmail test suite
 
@@ -120,7 +121,7 @@ class ContactsTests(unittest.TestCase):
 
         # Now remove them all
         for x in range(count):
-            self.assertTrue(account.removeContact(myContactList.getContactByName(str(x))))
+            self.assertEqual(True, account.removeContact(myContactList.getContactByName(str(x))))
         myContactList = account.getContacts()
         self.assertEqual(myContactList.getCount(), 0)
 

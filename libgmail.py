@@ -37,7 +37,7 @@ Version = '0.1.0'
 #
 
 LG_DEBUG=0
-from constants import *
+from lgconstants import *
 
 import os
 import re
