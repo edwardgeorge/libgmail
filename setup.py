@@ -8,7 +8,7 @@
 from distutils.core import setup
 mods = ['libgmail','lgconstants']
 setup (name = "libgmail",
-       version = "0.1.0",
+       version = "0.1.1",
        description = "python bindings to access Gmail",
        author = "follower@myrealbox.com, wdaher@mit.edu, stas@linux.isbeter.nl",
        author_email = "stas@linux.isbeter.nl",
