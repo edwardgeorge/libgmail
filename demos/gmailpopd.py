@@ -11,6 +11,7 @@
 #
 # Based on smtpd.py by Barry Warsaw <barry@python.org> (Thanks Barry!)
 #
+## Applied the Debian patch bug report #277310 --SZ--
 
 import sys
 import os
@@ -190,17 +191,23 @@ class POPChannel(asynchat.async_chat):
         """
         """
         DUMMY_MSG_SIZE = 1 # TODO: Determine actual message size.
+        msgCount = len(snapshot.unreadMsgs)
+        self.push('+OK')
         if not arg:
             # TODO: Change all of this to operate on an account snapshot?
-            msgCount = len(snapshot.unreadMsgs)
-            self.push('+OK')
             for msgIdx in range(1, msgCount + 1):
                 self.push('%d %d' % (msgIdx, DUMMY_MSG_SIZE))
-            self.push(".")
         else:
-            # TODO: Handle per-msg LIST commands
-            raise NotImplementedError
-                
+            try:
+                arg = int(arg)
+            except:
+                arg = -1
+            if 0 < arg <= msgCount:
+                self.push('%d %d' % (arg, DUMMY_MSG_SIZE))
+            else:
+                self.push("-ERR no such message, only %d messages in maildrop"
+                          % msgCount)
+        self.push(".")
 
     def pop_RETR(self, arg):
         """
