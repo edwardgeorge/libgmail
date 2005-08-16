@@ -5,6 +5,9 @@ VERSION = '0.1'
 PACKAGENAME = 'libgmail-docs_'
 import os
 
+print "\nCreate API docs"
+os.system('epydoc -o API ../libgmail.py')
+
 def cleanup(*args):
     """Used by os.path.walk to traverse the tree and remove CVS dirs"""
     if os.path.split(args[1])[1] == "CVS":
