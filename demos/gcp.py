@@ -1,4 +1,4 @@
-#!/usr/bin/python2.3
+#!/usr/bin/env python
 #
 # gcp.py -- Demo to copy a file to Gmail using libgmail
 #

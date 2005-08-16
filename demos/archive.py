@@ -1,4 +1,4 @@
-#!/usr/bin/python2.3
+#!/usr/bin/env python
 #
 # archive.py -- Demo to archive all threads in a Gmail folder
 #

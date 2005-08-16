@@ -1,4 +1,4 @@
-#!/usr/bin/python2.3
+#!/usr/bin/env python
 #
 # gmailftpd.py -- Demo to allow retrieval of attachments via FTP.
 #

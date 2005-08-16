@@ -1,3 +1,7 @@
+== Version: 0.1.1 ==
+All
+ * Renamed the shabang to use the 'env' program in all executables.
+
 == Version: 0.1.0 ==
 libgmail.py
  * Added contacts support. --WD--

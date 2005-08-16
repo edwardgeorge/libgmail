@@ -1,4 +1,4 @@
-#!/usr/bin/python2.3
+#!/usr/bin/env python
 #
 # mkconstants.py -- Extract constants from Gmail Javascript code
 #

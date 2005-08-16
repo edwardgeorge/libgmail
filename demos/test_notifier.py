@@ -1,4 +1,4 @@
-#!/usr/bin/python2.3
+#!/usr/bin/env python
 
 #
 # Rough first draft code to use "official" Gmail Notifier protocol

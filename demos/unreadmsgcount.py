@@ -1,4 +1,4 @@
-#!/usr/bin/python2.3
+#!/usr/bin/env python
 #
 # unreadmsgcount.py -- Demo to return unread message count with saved state
 #

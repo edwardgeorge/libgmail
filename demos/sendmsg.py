@@ -1,4 +1,4 @@
-#!/usr/bin/python2.3
+#!/usr/bin/env python
 #
 # sendmsg.py -- Demo to send a message via Gmail using libgmail
 #

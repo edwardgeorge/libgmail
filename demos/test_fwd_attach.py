@@ -1,4 +1,4 @@
-#!/usr/bin/python2.3
+#!/usr/bin/env python
 
 #
 # Usage: test_fwd_attach.py <account> <password> <recipient> <subject>

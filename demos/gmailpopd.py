@@ -1,4 +1,4 @@
-#!/usr/bin/python2.3
+#!/usr/bin/env python
 #
 # gmailpopd.py -- Demo to provide POP3 proxy for Gmail message retrieval..
 #

@@ -1,4 +1,4 @@
-#!/usr/bin/python2.3
+#!/usr/bin/env python
 #
 # gmailsmtp.py -- Demo to allow smtp delivery via Gmail
 #
