@@ -4,7 +4,7 @@
 #
 # Version: 0.1.0 (August 2005)
 ## To get the version number of the available libgmail version.
-Version = '0.1.0'
+Version = '0.1.1'
 
 # Author: follower@myrealbox.com
 #
