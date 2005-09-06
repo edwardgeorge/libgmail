@@ -19,10 +19,12 @@
 
 import sys
 import os
+import re
 import time
 import socket
 import asyncore
 import asynchat
+import logging
 
 program = sys.argv[0]
 __version__ = 'Python Gmail FTP proxy version 0.0.2'
@@ -71,7 +73,7 @@ class FTPChannel(asynchat.async_chat):
         self.set_terminator('\r\n')
 
         self._activeDataChannel = None
-        
+
 
     # Overrides base class for convenience
     def push(self, msg):
@@ -127,6 +129,21 @@ class FTPChannel(asynchat.async_chat):
         self._activeDataChannel.cmd = "LIST " + str(arg)
         self.push('226 ')
 
+    def ftp_RNFR(self, arg):
+        self.push('350 File exists, ready for destination name')
+
+    def ftp_RNTO(self, arg):
+        self.push('250 RNTO command successful.')
+
+    def ftp_SIZE(self, arg):
+        name_req = arg
+        name_req = name_req[1:]
+        try:
+           response = "213 %d" % (filenames[name_req].filesize)
+        except:
+           self.push("550 %s: No such file or directory." % (name_req))
+        else:
+           self.push(response)
 
     def ftp_RETR(self, arg):
         """
@@ -172,7 +189,10 @@ class FTPChannel(asynchat.async_chat):
         # TODO: Attach CWD (and other items) to channel...
         global my_cwd
         my_cwd = arg
-        self.push('250 OK')
+        self.push('550 ' + my_cwd + ': No such file or directory.')
+
+    def ftp_PWD(self, arg):
+        self.push('257 "/" is current directory.')
 
 
     def ftp_TYPE(self, arg):
@@ -181,20 +201,21 @@ class FTPChannel(asynchat.async_chat):
         global my_type
 
         response = '200 OK'
-        
-        if arg in ["A", "A N"]:    
+
+        if arg in ["A", "A N"]:
             my_type = "A"
         elif arg in ["I", "L 8"]:
             my_type = "I"
         else:
             response = "504 Unsupported TYPE parameter"
-            
+
         self.push(response)
 
 
 import tempfile
 
 files = {}
+filenames = {}
 
 class DataChannel(asyncore.dispatcher):
     """
@@ -220,23 +241,25 @@ class DataChannel(asyncore.dispatcher):
 
         if self.cmd[:4] in ["RETR", "STOR"] and my_type != "I":
             return
-                    
+
         conn, addr = self.accept()
 
         self.conn = conn # Remove this?
 
         if self.cmd.startswith('LIST'):
             r = ga.getMessagesByLabel('ftp')
-            filenames = []
+            # filenames = []
             for th in r:
                 for m in th:
                     for a in m.attachments:
-                        files[a.filename] = a
+                        files["-rw-r--r--   1 %s %s %d Jan  1  2000 %s" % (my_user, my_user, a.filesize, a.filename)] = a
+                        filenames[a.filename] = a
 
             conn.sendall("\r\n".join(files.keys()) + "\r\n")
         elif self.cmd.startswith('RETR'):
-            name_req = self.cmd[5:]
-            conn.sendall(files[name_req].content)
+            name_req = self.cmd[6:]
+            print "Reading `%s`." % (name_req)
+            conn.sendall(filenames[name_req].content)
         elif self.cmd.startswith('STOR'):
             buffer = ""
             while True:
@@ -245,9 +268,10 @@ class DataChannel(asyncore.dispatcher):
                     break
                 buffer += data
 
-            filename = self.cmd[5:]
+            filename = self.cmd[6:]
             tempDir = tempfile.mkdtemp()
-            tempFilePath = os.path.join(tempDir, filename)
+            tempFileName = re.sub('\.part', '', filename)
+            tempFilePath = os.path.join(tempDir, tempFileName)
             print "Writing `%s` to `%s`." % (filename, tempFilePath)
             open(tempFilePath, "wb").write(buffer)
 
@@ -278,11 +302,11 @@ class FTPServer(asyncore.dispatcher):
         print >> DEBUGSTREAM, 'Incoming connection from %s' % repr(addr)
         channel = FTPChannel(self, conn, addr)
 
-        
+
 
 if __name__ == '__main__':
     DEBUGSTREAM = sys.stderr
-    
+
     proxy = FTPServer(('127.0.0.1', 8021))
 
     try:
