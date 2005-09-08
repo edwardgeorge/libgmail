@@ -11,7 +11,6 @@ Version = '0.1.1'
 # Contacts support added by wdaher@mit.edu and Stas Z
 # (with massive initial help from 
 #  Adrian Holovaty's 'gmail.py' 
-#  Adrian Holovaty's 'gmail.py' 
 #  and the Johnvey Gmail API)
 #
 # License: GPL 2.0
@@ -1075,6 +1074,11 @@ class GmailSearchResult:
         """
         return len(self._threads)
 
+    def __getitem__(self,key):
+        """
+        """
+        return self._threads.__getitem__(key)
+
 
 from cPickle import load, dump
 
@@ -1187,6 +1191,12 @@ class GmailThread(_LabelHandlerMixin):
             
         return iter(self._messages)
 
+    def __getitem__(self, key):
+        """
+        """
+        if not self._messages:
+            self._messages = self._getMessages(self)
+        return self._messages.__getitem__(key)
 
     def _getMessages(self, thread):
         """
