@@ -11,6 +11,8 @@
 #
 # Based on smtpd.py by Barry Warsaw <barry@python.org> (Thanks Barry!)
 #
+# Major rewrite of the datachannel handeling by Willy De la Court <wdl@linux-lovers.be>
+#
 # Note: Requires messages to be marked with a label named "ftp".
 #       (This requirement can be removed.)
 #
@@ -27,7 +29,7 @@ import asynchat
 import logging
 
 program = sys.argv[0]
-__version__ = 'Python Gmail FTP proxy version 0.0.2'
+__version__ = 'Python Gmail FTP proxy version 0.0.3'
 
 # Allow us to run using installed `libgmail` or the one in parent directory.
 try:
@@ -51,12 +53,7 @@ DEBUGSTREAM = Devnull()
 NEWLINE = '\n'
 EMPTYSTRING = ''
 
-# TODO: Don't make these globals..
 nextPort = 9021
-my_cwd = ""
-my_user = ""
-my_type = "A"
-ga = None
 
 class FTPChannel(asynchat.async_chat):
 
@@ -71,7 +68,10 @@ class FTPChannel(asynchat.async_chat):
         print >> DEBUGSTREAM, 'Peer:', repr(self.__peer)
         self.push('220 %s %s' % (self.__fqdn, __version__))
         self.set_terminator('\r\n')
-
+        self.my_type = "A"
+        self.my_cwd = ""
+        self.my_user = ""
+        self.filenames = {}
         self._activeDataChannel = None
 
 
@@ -106,40 +106,68 @@ class FTPChannel(asynchat.async_chat):
         method(arg)
         return
 
+    def get_filelist(self):
+        """
+        Get the file list from GMail
+        """
+        r = self.ga.getMessagesByLabel('ftp')
+        for th in r:
+            for m in th:
+                for a in m.attachments:
+                    self.filenames[a.filename] = a
+
     def ftp_USER(self, arg):
+        """
+        Process USER ftp command
+        """
         if not arg:
             self.push('501 Syntax: USER username')
         else:
-            global my_user
-            my_user = arg
+            self.my_user = arg
             self.push('331 Password required')
 
     def ftp_PASS(self, arg = ''):
-        global ga
-        ga = libgmail.GmailAccount(my_user, arg)
+        """
+        Process PASS ftp command
+        """
+        self.ga = libgmail.GmailAccount(self.my_user, arg)
 
         try:
-            ga.login()
+            self.ga.login()
         except libgmail.GmailLoginFailure:
             self.push('530 Login failed. (Wrong username/password?)')
         else:
             self.push('230 User logged in')
 
     def ftp_LIST(self, arg):
+        """
+        Process LIST ftp command
+        """
+        self.filenames = {}
         self._activeDataChannel.cmd = "LIST " + str(arg)
-        self.push('226 ')
+        self._activeDataChannel.handle_LIST()
 
     def ftp_RNFR(self, arg):
+        """
+        Process RNFR ftp command
+        """
         self.push('350 File exists, ready for destination name')
 
     def ftp_RNTO(self, arg):
+        """
+        Process RNTO ftp command
+        """
         self.push('250 RNTO command successful.')
 
     def ftp_SIZE(self, arg):
+        """
+        Process SIZE ftp command
+        """
         name_req = arg
-        name_req = name_req[1:]
+        if name_req[:1] == '/':
+           name_req = name_req[1:]
         try:
-           response = "213 %d" % (filenames[name_req].filesize)
+           response = "213 %d" % (self.filenames[name_req].filesize)
         except:
            self.push("550 %s: No such file or directory." % (name_req))
         else:
@@ -147,65 +175,68 @@ class FTPChannel(asynchat.async_chat):
 
     def ftp_RETR(self, arg):
         """
+        Process RETR ftp command
         """
-        if my_type != "I":
-            self.push('426 Only binary transfer mode is supported')
-        else:
-            self._activeDataChannel.cmd = "RETR " + str(arg)
-            self.push('226 ')
+        self._activeDataChannel.cmd = "RETR " + str(arg)
+        self._activeDataChannel.handle_RETR()
 
 
     def ftp_STOR(self, arg):
         """
+        Process STORE ftp command
         """
-        if my_type != "I":
-            self.push('426 Only binary transfer mode is supported')
-        else:
-            # TODO: Check this is legit, don't just copy & paste from RETR...
-            self._activeDataChannel.cmd = "STOR " + str(arg)
-            self.push('226 ')
+        # TODO: Check this is legit, don't just copy & paste from RETR...
+        self._activeDataChannel.cmd = "STOR " + str(arg)
+        self._activeDataChannel.handle_STOR()
 
 
     def ftp_PASV(self, arg):
         """
+        Process PASV ftp command
         """
         # *** TODO: Don't allow non-binary file transfers here?
         global nextPort
         PORT = nextPort
         nextPort += 1
         ADDR = ('127.0.0.1', PORT)
-        self._activeDataChannel = DataChannel(ADDR)
+        self._activeDataChannel = DataChannel(ADDR, self)
         self.push('227 =127,0,0,1,%d,%d' % (PORT / 256, PORT % 256))
-        self.push('150 ')
 
 
     def ftp_QUIT(self, arg):
+        """
+        Process QUIT ftp command
+        """
         # args is ignored
         self.push('221 Bye')
         self.close_when_done()
 
 
     def ftp_CWD(self, arg):
+        """
+        Process CWD ftp command
+        """
         # TODO: Attach CWD (and other items) to channel...
-        global my_cwd
-        my_cwd = arg
-        self.push('550 ' + my_cwd + ': No such file or directory.')
+        self.my_cwd = arg
+        self.push('550 ' + self.my_cwd + ': No such file or directory.')
 
     def ftp_PWD(self, arg):
+        """
+        Process PWD ftp command
+        """
         self.push('257 "/" is current directory.')
 
 
     def ftp_TYPE(self, arg):
         """
+        Process TYPE ftp command
         """
-        global my_type
-
         response = '200 OK'
 
         if arg in ["A", "A N"]:
-            my_type = "A"
+            self.my_type = "A"
         elif arg in ["I", "L 8"]:
-            my_type = "I"
+            self.my_type = "I"
         else:
             response = "504 Unsupported TYPE parameter"
 
@@ -214,13 +245,11 @@ class FTPChannel(asynchat.async_chat):
 
 import tempfile
 
-files = {}
-filenames = {}
-
 class DataChannel(asyncore.dispatcher):
     """
     """
-    def __init__(self, localaddr):
+    def __init__(self, localaddr, ControlChannel):
+        self._ControlChannel = ControlChannel
         self._localaddr = localaddr
         asyncore.dispatcher.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -237,51 +266,93 @@ class DataChannel(asyncore.dispatcher):
 
     def handle_accept(self):
         """
+        Start the DATA connection
         """
-
-        if self.cmd[:4] in ["RETR", "STOR"] and my_type != "I":
-            return
-
         conn, addr = self.accept()
 
-        self.conn = conn # Remove this?
+        self._ControlChannel.push('150 Opening data connection.')
 
-        if self.cmd.startswith('LIST'):
-            r = ga.getMessagesByLabel('ftp')
-            # filenames = []
-            for th in r:
-                for m in th:
-                    for a in m.attachments:
-                        files["-rw-r--r--   1 %s %s %d Jan  1  2000 %s" % (my_user, my_user, a.filesize, a.filename)] = a
-                        filenames[a.filename] = a
+        self.conn = conn
 
-            conn.sendall("\r\n".join(files.keys()) + "\r\n")
-        elif self.cmd.startswith('RETR'):
-            name_req = self.cmd[6:]
-            print "Reading `%s`." % (name_req)
-            conn.sendall(filenames[name_req].content)
-        elif self.cmd.startswith('STOR'):
-            buffer = ""
-            while True:
-                data = conn.recv(1024)
-                if not data:
-                    break
-                buffer += data
+    def handle_LIST(self):
+        """
+        Send the data response for the LIST command
+        """
+        self._ControlChannel.get_filelist()
+        result = ""
+        for file in self._ControlChannel.filenames.keys():
+            result = result + "-rw-r--r--   1 %s %s %10d Jan  1  2000 %s\r\n" % (self._ControlChannel.my_user, self._ControlChannel.my_user, self._ControlChannel.filenames[file].filesize, self._ControlChannel.filenames[file].filename)
+        self.conn.sendall(result)
+        self._ControlChannel.push('226 Transfer complete.')
+        self.close()
+        self.conn.close()
 
-            filename = self.cmd[6:]
-            tempDir = tempfile.mkdtemp()
-            tempFileName = re.sub('\.part', '', filename)
-            tempFilePath = os.path.join(tempDir, tempFileName)
-            print "Writing `%s` to `%s`." % (filename, tempFilePath)
-            open(tempFilePath, "wb").write(buffer)
+    def handle_RETR(self):
+        """
+        Send the file for the RETR command
+        """
+        if self._ControlChannel.my_type != "I":
+            self._ControlChannel.push('426 Only binary transfer mode is supported')
+            self.close()
+            self.conn.close()
+            return
 
-            ga.storeFile(tempFilePath, "ftp")
+        name_req = self.cmd[5:]
+        # Remove leading /
+        if name_req[:1] == '/':
+            name_req = name_req[1:]
+        print >> DEBUGSTREAM, "Reading `%s`." % (name_req)
+        # check if the file exists
+        try:
+            name = self._ControlChannel.filenames[name_req].filename
+        except KeyError:
+            # if not the list is probably not read yet
+            self._ControlChannel.get_filelist()
+        # try again
+        try:
+            self.conn.sendall(self._ControlChannel.filenames[name_req].content)
+            response = '226 Transfer complete.'
+        except KeyError:
+            response = '550 ' + name_req + ': No such file or directory.'
+        self._ControlChannel.push(response)
+        self.close()
+        self.conn.close()
 
-            os.remove(tempFilePath)
-            os.rmdir(tempDir)
+    def handle_STOR(self):
+        """
+        Receive the file for the STOR command
+        """
+        if self._ControlChannel.my_type != "I":
+            self._ControlChannel.push('426 Only binary transfer mode is supported')
+            self.close()
+            self.conn.close()
+            return
 
-        conn.close()
+        buffer = ""
+        while True:
+            data = self.conn.recv(1024)
+            if not data:
+                break
+            buffer += data
 
+        filename = self.cmd[5:]
+        # Remove leading /
+        if filename[:1] == '/':
+            filename = filename[1:]
+        tempDir = tempfile.mkdtemp()
+        # Remove trailing '.part' KDE uses this to upload files
+        tempFileName = re.sub('\.part', '', filename)
+        tempFilePath = os.path.join(tempDir, tempFileName)
+        print >> DEBUGSTREAM, "Writing `%s` to `%s`." % (filename, tempFilePath)
+        open(tempFilePath, "wb").write(buffer)
+
+        self._ControlChannel.ga.storeFile(tempFilePath, "ftp")
+
+        os.remove(tempFilePath)
+        os.rmdir(tempDir)
+        self._ControlChannel.push('226 Transfer complete.')
+        self.close()
+        self.conn.close()
 
 class FTPServer(asyncore.dispatcher):
     def __init__(self, localaddr):
