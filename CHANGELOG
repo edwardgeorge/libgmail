@@ -1,6 +1,7 @@
 == Version: 0.1.1 ==
 All
- * Renamed the shabang to use the 'env' program in all executables.
+ * Renamed the shabang to use the 'env' program in all executables. --SZ--
+ * Fixed the redirect bug caused by the changed Gmail login pages. --WD--
 
 == Version: 0.1.0 ==
 libgmail.py
