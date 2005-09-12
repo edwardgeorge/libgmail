@@ -2,11 +2,11 @@
 #
 # libgmail -- Gmail access via Python
 #
-# Version: 0.1.0 (August 2005)
 ## To get the version number of the available libgmail version.
-Version = '0.1.1'
+Version = '0.1.1' # (Sep 2005)
 
-# Author: follower@myrealbox.com
+# Original author: follower@myrealbox.com
+# Maintainers: Waseem (wdaher@mit.edu) and Stas Z
 #
 # Contacts support added by wdaher@mit.edu and Stas Z
 # (with massive initial help from 
