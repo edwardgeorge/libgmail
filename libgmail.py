@@ -51,7 +51,7 @@ from email.MIMEText import MIMEText
 from email.MIMEMultipart import MIMEMultipart
 
 URL_LOGIN = "https://www.google.com/accounts/ServiceLoginBoxAuth"
-URL_GMAIL = "https://gmail.google.com/gmail"
+URL_GMAIL = "https://mail.google.com/mail/"
 
 # TODO: Get these on the fly?
 STANDARD_FOLDERS = [U_INBOX_SEARCH, U_STARRED_SEARCH,
@@ -277,10 +277,9 @@ class GmailAccount:
         """
         # TODO: Throw exception if we were instantiated with state?
         data = urllib.urlencode({'continue': URL_GMAIL,
-                                 'service': 'mail',
                                  'Email': self.name,
                                  'Passwd': self._pw,
-                                 'null': 'Sign+in'})
+                                 })
     
         headers = {'Host': 'www.google.com',
                    'User-Agent': 'User-Agent: Mozilla/5.0 (compatible;)'}
@@ -290,12 +289,15 @@ class GmailAccount:
         
         # TODO: Tidy this up?
         # This requests the page that provides the required "GV" cookie.
-        RE_PAGE_REDIRECT = 'top\.location\W=.*CheckCookie\?continue=([^"]+)'
+        RE_PAGE_REDIRECT = 'CheckCookie\?continue=([^"]+)'
+
+
         # TODO: Catch more failure exceptions here...?
         
         try:
             redirectURL = urllib.unquote(re.search(RE_PAGE_REDIRECT,
                                                    pageData).group(1))
+            
         except AttributeError:
             raise GmailLoginFailure("Login failed. (Wrong username/password?)")
         # We aren't concerned with the actual content of this page,
