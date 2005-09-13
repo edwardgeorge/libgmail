@@ -470,8 +470,11 @@ class GmailAccount:
     def getRawMessage(self, msgId):
         """
         """
+        # U_ORIGINAL_MESSAGE_VIEW seems the only one that returns a page.
+        # All the other U_* results in a 404 exception
+        PageView = U_ORIGINAL_MESSAGE_VIEW  
         return self._retrievePage(
-            _buildURL(view=U_ORIGINAL_MESSAGE_VIEW, th=msgId))
+            _buildURL(view=PageView, th=msgId))
 
 
     def getUnreadMsgCount(self):
