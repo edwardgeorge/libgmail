@@ -18,7 +18,7 @@ Run this:
 
   python libgmail.py
 
-or this:
+When you have the demos package installed you could do this:
 
   python demos/archive.py
 
