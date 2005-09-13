@@ -3,10 +3,11 @@
 # libgmail -- Gmail access via Python
 #
 ## To get the version number of the available libgmail version.
-Version = '0.1.1' # (Sep 2005)
+## Reminder: add date before next release.
+Version = '0.1.2' # (??? 2005)
 
 # Original author: follower@myrealbox.com
-# Maintainers: Waseem (wdaher@mit.edu) and Stas Z
+# Maintainers: Waseem (wdaher@mit.edu) and Stas Z (stas@linux.isbeter.nl)
 #
 # Contacts support added by wdaher@mit.edu and Stas Z
 # (with massive initial help from 
@@ -45,6 +46,7 @@ import urllib2
 import logging
 import mimetypes
 import types
+from cPickle import load, dump
 
 from email.MIMEBase import MIMEBase
 from email.MIMEText import MIMEText
@@ -59,7 +61,7 @@ STANDARD_FOLDERS = [U_INBOX_SEARCH, U_STARRED_SEARCH,
                     U_SENT_SEARCH, U_SPAM_SEARCH]
 
 # Constants with names not from the Gmail Javascript:
-# TODO: Move to `constants.py`?
+# TODO: Move to `lgconstants.py`?
 U_SAVEDRAFT_VIEW = "sd"
 
 D_DRAFTINFO = "di"
@@ -731,7 +733,10 @@ class GmailAccount:
             # if they change, chances are that something *bigger* in gmail changed
             # that we're not ready to deal with
             if len(entry) >= 6:
-                newGmailContact = GmailContact(entry[1], entry[2], entry[4], entry[5])
+                ##newGmailContact = GmailContact(entry[1], entry[2], entry[4], entry[5])
+                rawnotes = self._getSpecInfo(entry[1])
+                #print rawnotes
+                newGmailContact = GmailContact(entry[1], entry[2], entry[4],rawnotes)
                 contactList.append(newGmailContact)
 
         def extractEntries(possibleData):
@@ -778,8 +783,9 @@ class GmailAccount:
         myUrl = _buildURL(view='cl',search='contacts', pnl='a')
         myData = self._parsePage(myUrl)
         # This comes back with a dictionary
-        # with entry 'a'
+        # with entry 'cl'
         addresses = myData['cl']
+        
         extractEntries(addresses)
 ##        print "rawPage", self._retrievePage(myUrl)
 ##        print "\n\n"
@@ -873,7 +879,17 @@ class GmailAccount:
             print "Old version of person:",gmailContact
             print "New version of person:",newVersionOfPersonToDelete
             return False
-
+    def _getSpecInfo(self,id):
+        """
+        Return some cool notes data.
+        """
+        myURL =_buildURL(search='contacts',ct_id=id,c=id,\
+                        at=self._cookieJar._cookies['GMAIL_AT'],view='ct')
+        pageData = self._retrievePage(myURL)
+        myData = self._parsePage(myURL)
+        #print "myData",myData
+        rawnotes = myData['cov'][7]
+        return rawnotes[1]
 
 class GmailContact:
     """
@@ -904,21 +920,22 @@ class GmailContact:
     def getVCard(self):
         """Returns a vCard 3.0 for this
         contact, as a string"""
-        vcard = "BEGIN:VCARD\n"
-        vcard += "VERSION:3.0\n"
-        # Deal with multiline notes
-        vcard += "NOTE:%s\n" % self.getNotes().replace("\n","\\n")
+        # The \r is is to comply with the RFC2425 section 5.8.1
+        vcard = "BEGIN:VCARD\r\n"
+        vcard += "VERSION:3.0\r\n"
+        ## Deal with multiline notes
+        ##vcard += "NOTE:%s\n" % self.getNotes().replace("\n","\\n")
+        vcard += "NOTE:%s\r\n" % self.getNotes()
         # Fake-out N by splitting up whatever we get out of getName
         # This might not always do 'the right thing'
         # but it's a *reasonable* compromise
         fullname = self.getName().split()
         fullname.reverse()
-        vcard += "N:%s" % ';'.join(fullname) + "\n"
-        vcard += "FN:%s\n" % self.getName()
-        vcard += "EMAIL;TYPE=INTERNET:%s\n" % self.getEmail()
-        vcard += "END:VCARD\n\n"
-        # Final newline in case we want to put more than one in a file?
-        # Yes :-)
+        vcard += "N:%s" % ';'.join(fullname) + "\r\n"
+        vcard += "FN:%s\r\n" % self.getName()
+        vcard += "EMAIL;TYPE=INTERNET:%s\r\n" % self.getEmail()
+        vcard += "END:VCARD\r\n\r\n"
+        # Final newline in case we want to put more than one in a file
         return vcard
 
 class GmailContactList:
@@ -1082,8 +1099,6 @@ class GmailSearchResult:
         return self._threads.__getitem__(key)
 
 
-from cPickle import load, dump
-
 class GmailSessionState:
     """
     """
@@ -1138,9 +1153,6 @@ class _LabelHandlerMixin(object):
 
 class GmailThread(_LabelHandlerMixin):
     """
-
-
-
     Note: As far as I can tell, the "canonical" thread id is always the same
           as the id of the last message in the thread. But it appears that
           the id of any message in the thread can be used to retrieve
