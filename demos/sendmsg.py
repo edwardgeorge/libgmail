@@ -15,7 +15,9 @@ import logging
 # Allow us to run using installed `libgmail` or the one in parent directory.
 try:
     import libgmail
-    logging.warn("Note: Using currently installed `libgmail` version.")
+    ## Wouldn't this the preffered way?
+    ## We shouldn't raise a warning about a normal import
+    ##logging.warn("Note: Using currently installed `libgmail` version.")
 except ImportError:
     # Urghhh...
     sys.path.insert(1,

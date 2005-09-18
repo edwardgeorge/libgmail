@@ -39,7 +39,7 @@ Version = '0.1.2' # (??? 2005)
 LG_DEBUG=0
 from lgconstants import *
 
-import os
+import os,pprint
 import re
 import urllib
 import urllib2
@@ -73,59 +73,69 @@ versionWarned = False # If the Javascript version is different have we
 
 
 RE_SPLIT_PAGE_CONTENT = re.compile("D\((.*?)\);", re.DOTALL)
+
+class GmailError(Exception):
+    '''
+    Exception thrown upon gmail-specific failures, in particular a
+    failure to log in and a failure to parse responses.
+
+    '''
+    pass
+
+
 def _parsePage(pageContent):
     """
     Parse the supplied HTML page and extract useful information from
     the embedded Javascript.
     
     """
-    # Note: We use the easiest thing that works here and no longer
-    #       extract the Javascript code we want from the page first.
-    items = (re.findall(RE_SPLIT_PAGE_CONTENT, pageContent)) 
+    lines = pageContent.splitlines()
+    data = '\n'.join(x for x in lines if x and x[0] in ['D', ')', ',', ']'])
+    data = data.replace(',,',',').replace(',,',',')
+    #check page data    
+##    test = data.split('\n')
+##    i = 0
+##    for line in test:
+##        i += 1
+##        print i," ",line
+    result = []
+    try:
+        exec data in {'__builtins__': None}, {'D': lambda x: result.append(x)}
+    except SyntaxError,info:
+        print info
+        raise GmailError, 'Failed to parse data returned from gmail.'
 
-    # TODO: Check we find something?
-    
+    items = result 
     itemsDict = {}
-
     namesFoundTwice = []
-
     for item in items:
-        item = item.strip()[1:-1]
-        name, value = (item.split(",", 1) + [""])[:2]
-
-        name = name[1:-1] # Strip leading and trailing single or double quotes.
-        
+        #print "\nparsepage dict\n",item
+        name = item[0]
         try:
-            # By happy coincidence Gmail's data is stored in a form
-            # we can turn into Python data types by simply evaluating it.
-            # TODO: Parse this better/safer?
-            # TODO: Handle "mb" mail bodies better as they can be anything.
-            if value != "": # Empty strings aren't parsed successfully.
-                parsedValue = eval(value.replace("\n","").replace(",,",",None,").replace(",,",",None,")) # Yuck! Need two ",," replaces to handle ",,," overlap. TODO: Tidy this up... TODO: It appears there may have been a change in the number & order of at least the CS_* values, investigate.
+            parsedValue = item[1:]
+        except Exception:
+            parsedValue = ['']
+        if itemsDict.has_key(name):
+            # This handles the case where a name key is used more than
+            # once (e.g. mail items, mail body) and automatically
+            # places the values into list.
+            # TODO: Check this actually works properly, it's early... :-)
+            if (name in namesFoundTwice):
+                itemsDict[name].append(parsedValue)
             else:
-                parsedValue = value
-        except SyntaxError:
-            if LG_DEBUG: logging.warning("Could not parse item `%s` as it was `%s`." %
-                            (name, value))
+                itemsDict[name] = [itemsDict[name], parsedValue]
+                namesFoundTwice.append(name)
         else:
-            if itemsDict.has_key(name):
-                # This handles the case where a name key is used more than
-                # once (e.g. mail items, mail body) and automatically
-                # places the values into list.
-                # TODO: Check this actually works properly, it's early... :-)
-                if (name in namesFoundTwice):
-                    itemsDict[name].append(parsedValue)
-                else:
-                    itemsDict[name] = [itemsDict[name], parsedValue]
-                    namesFoundTwice.append(name)
-            else:
-                itemsDict[name] = parsedValue
-
-    global versionWarned
-    if itemsDict[D_VERSION] != js_version and not versionWarned:
-        if LG_DEBUG: logging.debug("Live Javascript and constants file versions differ.")
-        versionWarned = True
-
+            itemsDict[name] = parsedValue
+    ####### debug code #########
+##    f = open('out.txt','w')
+##    l =[]
+##    for k,v in itemsDict.items():
+##        print "\n",k,"\n",v
+##        l.append("%s = %s\n" % (k,v))
+##    f.writelines(l)
+##    f.close()
+    #############################
     return itemsDict
 
 
@@ -317,7 +327,6 @@ class GmailAccount:
             
         self._cookieJar.setCookies(req)
         resp = urllib2.urlopen(req)
-
         pageData = resp.read()
 
         # Extract cookies here
@@ -334,7 +343,6 @@ class GmailAccount:
         
         """
         items = _parsePage(self._retrievePage(urlOrRequest))
-        
         # Automatically cache some things like quota usage.
         # TODO: Cache more?
         # TODO: Expire cached values?
@@ -343,10 +351,13 @@ class GmailAccount:
             self._cachedQuotaInfo = items[D_QUOTA]
         except KeyError:
             pass
-
+        #pprint.pprint(items)
+        
         try:
-            self._cachedLabelNames = [category[CT_NAME]
-                                         for category in items[D_CATEGORIES]]
+            self._cachedLabelNames = [category[CT_NAME] for category in items[D_CATEGORIES][0]]
+            #### old code ####
+            ##self._cachedLabelNames = [category[CT_NAME] for category in items[D_CATEGORIES]]
+            ##################
         except KeyError:
             pass
         
@@ -378,7 +389,6 @@ class GmailAccount:
                                len(threadsInfo) < threadListSummary[TS_TOTAL]):
             
                 items = self._parseSearchResult(searchType, start, **kwargs)
-
                 #TODO: Handle single & zero result case better? Does this work?
                 try:
                     threads = items[D_THREAD]
@@ -397,7 +407,7 @@ class GmailAccount:
                     threadsPerPage = threadListSummary[TS_NUM]
 
                     start += threadsPerPage
-
+        
         # TODO: Record whether or not we retrieved all pages..?
         return GmailSearchResult(self, (searchType, kwargs), threadsInfo)
 
@@ -736,10 +746,10 @@ class GmailAccount:
             # if they change, chances are that something *bigger* in gmail changed
             # that we're not ready to deal with
             if len(entry) >= 6:
-                ##newGmailContact = GmailContact(entry[1], entry[2], entry[4], entry[5])
-                rawnotes = self._getSpecInfo(entry[1])
-                #print rawnotes
-                newGmailContact = GmailContact(entry[1], entry[2], entry[4],rawnotes)
+                newGmailContact = GmailContact(entry[1], entry[2], entry[4], entry[5])
+                ##rawnotes = self._getSpecInfo(entry[1])
+                ##print rawnotes
+                ##newGmailContact = GmailContact(entry[1], entry[2], entry[4],rawnotes)
                 contactList.append(newGmailContact)
 
         def extractEntries(possibleData):
@@ -785,6 +795,7 @@ class GmailAccount:
         # pnl = a is necessary to get *all* contacts?
         myUrl = _buildURL(view='cl',search='contacts', pnl='a')
         myData = self._parsePage(myUrl)
+        #print "\nmyData\n",myData
         # This comes back with a dictionary
         # with entry 'cl'
         addresses = myData['cl']
@@ -890,9 +901,9 @@ class GmailAccount:
                         at=self._cookieJar._cookies['GMAIL_AT'],view='ct')
         pageData = self._retrievePage(myURL)
         myData = self._parsePage(myURL)
-        #print "myData",myData
+        #print "\nmyData form _getSpecInfo\n",myData
         rawnotes = myData['cov'][7]
-        return rawnotes[1]
+        return rawnotes
 
 class GmailContact:
     """
@@ -1080,9 +1091,7 @@ class GmailSearchResult:
         """
         self._account = account
         self.search = search # TODO: Turn into object + format nicely.
-
-        self._threads = [GmailThread(self, thread)
-                         for thread in threadsInfo]
+        self._threads = [GmailThread(self, thread) for thread in threadsInfo[0]]
 
 
     def __iter__(self):
@@ -1163,23 +1172,23 @@ class GmailThread(_LabelHandlerMixin):
     
     """
 
-    def __init__(self, parent, threadInfo):
+    def __init__(self, parent, threadsInfo):
         """
         """
         # TODO Handle this better?
         self._parent = parent
         self._account = self._parent._account
         
-        self.id = threadInfo[T_THREADID] # TODO: Change when canonical updated?
-        self.subject = threadInfo[T_SUBJECT_HTML]
+        self.id = threadsInfo[T_THREADID] # TODO: Change when canonical updated?
+        self.subject = threadsInfo[T_SUBJECT_HTML]
 
-        self.snippet = threadInfo[T_SNIPPET_HTML]
+        self.snippet = threadsInfo[T_SNIPPET_HTML]
         #self.extraSummary = threadInfo[T_EXTRA_SNIPPET] #TODO: What is this?
 
         # TODO: Store other info?
         # Extract number of messages in thread/conversation.
 
-        self._authors = threadInfo[T_AUTHORS_HTML]
+        self._authors = threadsInfo[T_AUTHORS_HTML]
 
         try:
             # TODO: Find out if this information can be found another way...
@@ -1224,7 +1233,13 @@ class GmailThread(_LabelHandlerMixin):
                                                  view = U_CONVERSATION_VIEW,
                                                  th = thread.id,
                                                  q = "in:anywhere")
-
+##        f = open('out.txt','w')
+##        l =[]
+##        for k,v in items.items():
+##            print "\n",k,"\n",v
+##            l.append("%s = %s\n" % (k,v))
+##        f.writelines(l)
+##        f.close()
         result = []
         # TODO: Handle this better?
         # Note: This handles both draft & non-draft messages in a thread...
@@ -1236,11 +1251,12 @@ class GmailThread(_LabelHandlerMixin):
                 continue
             else:
                 # TODO: Handle special case of only 1 message in thread better?
-                if type(msgsInfo) != type([]):
+                if type(msgsInfo[0]) != type([]):
                     msgsInfo = [msgsInfo]
-
-                result += [GmailMessage(thread, msg, isDraft = isDraft)
-                           for msg in msgsInfo]
+                for msg in msgsInfo:
+                    #print "\nmessage\n",msg
+                    result += [GmailMessage(thread, msg, isDraft = isDraft)]
+                           
 
         return result
 
@@ -1279,9 +1295,10 @@ class GmailMessage(object):
         """
         # TODO: Automatically detect if it's a draft or not?
         # TODO Handle this better?
+        #print "\nGmailMessage\n",msgData
         self._parent = parent
         self._account = self._parent._account
-        
+        #print "\nmsgData\n",msgData
         self.id = msgData[MI_MSGID]
         self.number = msgData[MI_NUM]
         self.subject = msgData[MI_SUBJECT]
