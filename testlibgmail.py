@@ -48,22 +48,21 @@ class ContactsTests(unittest.TestCase):
         self.assertEqual(contact.getEmail(), email, "Returned email isn't the one we created initially")
         self.assertEqual(contact.getNotes(), notes, "Returned note isn't the one we created initially")
 
-## This is a known non-working test
-## at release time.
-## Commenting it out for the release
-## so that the test suite passes
-#    
-#     def test2_AdvancedAddContact(self):
-#         """Create and retrieve a contact with a newline in the notes"""
-#         name = 'W4533m'
-#         email = 'fake-person@gmail.com'
-#         notes = 'Is\nawesome'
-#         account.addContact(name, email, notes)
-#         myContacts = account.getContacts()
-#         contact = myContacts.getContactByName(name)
-#         self.assertEqual(contact.getName(), name, "Returned name isn't the one we created initially")
-#         self.assertEqual(contact.getEmail(), email, "Returned email isn't the one we created initially")
-#         self.assertEqual(contact.getNotes(), notes, "Returned note isn't the one we created initially")
+    def test2_AdvancedAddContact(self):
+        """Create and retrieve a contact with a newline in the notes"""
+        name = 'W4533m'
+        email = 'fake-person@gmail.com'
+        notes = 'Is\nawesome'
+        account.addContact(name, email, notes)
+        myContacts = account.getContacts()
+        contact = myContacts.getContactByName(name)
+        self.assertEqual(contact.getName(), name, "Returned name isn't the one we created initially")
+        self.assertEqual(contact.getEmail(), email, "Returned email isn't the one we created initially")
+
+        print "Returned notes is: ", contact.getNotes()
+        print "Desired notes was: " + notes
+
+        self.assertEqual(contact.getNotes(), notes, "Returned note isn't the one we created initially")
 
     def test3_GmailContact(self):
         """Check that GmailContact equality and accessor methods work"""
