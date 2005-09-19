@@ -43,7 +43,6 @@ import os,pprint
 import re
 import urllib
 import urllib2
-import logging
 import mimetypes
 import types
 from cPickle import load, dump
@@ -175,11 +174,10 @@ class CookieJar:
         # TODO: Do this all more nicely?
         for cookie in response.headers.getheaders('Set-Cookie'):
             name, value = (cookie.split("=", 1) + [""])[:2]
-            if LG_DEBUG: logging.debug("Extracted cookie `%s`" % (name))
+            if LG_DEBUG: print "Extracted cookie `%s`" % (name)
             if not nameFilter or name in nameFilter:
                 self._cookies[name] = value.split(";")[0]
-                if LG_DEBUG: logging.debug("Stored cookie `%s` value `%s`" %
-                              (name, self._cookies[name]))
+                if LG_DEBUG: print "Stored cookie `%s` value `%s`" % (name, self._cookies[name])
 
 
     def addCookie(self, name, value):
