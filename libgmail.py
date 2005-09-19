@@ -90,7 +90,7 @@ def _parsePage(pageContent):
     
     """
     lines = pageContent.splitlines()
-    data = '\n'.join(x for x in lines if x and x[0] in ['D', ')', ',', ']'])
+    data = '\n'.join([x for x in lines if x and x[0] in ['D', ')', ',', ']']])
     data = data.replace(',,',',').replace(',,',',')
     #check page data    
 ##    test = data.split('\n')
