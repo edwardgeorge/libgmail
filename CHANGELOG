@@ -2,8 +2,9 @@
 libgmail.py
  * Added a \r to the line endings in the VCard export function. This is done
    to comply with rfc2425 section 5.8.1 --SZ--
- * Added support for multiline contact notes. --SZ--
+ * Fixed a security bug in the page parser. --SZ--
 
+ 
 == Version: 0.1.1 ==
 All
  * Renamed the shabang to use the 'env' program in all executables. --SZ--

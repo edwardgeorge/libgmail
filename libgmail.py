@@ -4,7 +4,7 @@
 #
 ## To get the version number of the available libgmail version.
 ## Reminder: add date before next release.
-Version = '0.1.2' # (??? 2005)
+Version = '0.1.2' # (sep 2005)
 
 # Original author: follower@myrealbox.com
 # Maintainers: Waseem (wdaher@mit.edu) and Stas Z (stas@linux.isbeter.nl)
@@ -905,17 +905,20 @@ class GmailAccount:
             print "Old version of person:",gmailContact
             print "New version of person:",newVersionOfPersonToDelete
             return False
-    def _getSpecInfo(self,id):
-        """
-        Return some cool notes data.
-        """
-        myURL =_buildURL(search='contacts',ct_id=id,c=id,\
-                        at=self._cookieJar._cookies['GMAIL_AT'],view='ct')
-        pageData = self._retrievePage(myURL)
-        myData = self._parsePage(myURL)
-        #print "\nmyData form _getSpecInfo\n",myData
-        rawnotes = myData['cov'][7]
-        return rawnotes
+## Don't remove this. contact stas
+##    def _getSpecInfo(self,id):
+##        """
+##        Return all the notes data.
+##        This is currently not used due to the fact that it requests pages in 
+##        a dos attack manner.
+##        """
+##        myURL =_buildURL(search='contacts',ct_id=id,c=id,\
+##                        at=self._cookieJar._cookies['GMAIL_AT'],view='ct')
+##        pageData = self._retrievePage(myURL)
+##        myData = self._parsePage(myURL)
+##        #print "\nmyData form _getSpecInfo\n",myData
+##        rawnotes = myData['cov'][7]
+##        return rawnotes
 
 class GmailContact:
     """
