@@ -138,7 +138,19 @@ def _parsePage(pageContent):
     #############################
     return itemsDict
 
-
+def _splitBunches(infoItems):
+    """
+    Utility to help make it easy to iterate over each item separately,
+    even if they were bunched on the page.
+    """
+    result= []
+    # TODO: Decide if this is the best approach.
+    for group in infoItems:
+        if type(group) == tuple:
+            result.extend(group)
+        else:
+            result.append(group)
+    return result
 
 class CookieJar:
     """
@@ -747,6 +759,8 @@ class GmailAccount:
             # that we're not ready to deal with
             if len(entry) >= 6:
                 newGmailContact = GmailContact(entry[1], entry[2], entry[4], entry[5])
+                #### new code used to get all the notes 
+                #### not used yet due to lockdown problems
                 ##rawnotes = self._getSpecInfo(entry[1])
                 ##print rawnotes
                 ##newGmailContact = GmailContact(entry[1], entry[2], entry[4],rawnotes)
@@ -1061,25 +1075,6 @@ class GmailContactList:
                 idList.append(entry)
         return idList
     
-def _splitBunches(infoItems):
-    """
-
-    Utility to help make it easy to iterate over each item separately,
-    even if they were bunched on the page.
-    """
-    result= []
-
-    # TODO: Decide if this is the best approach.
-    for group in infoItems:
-        if type(group) == tuple:
-            result.extend(group)
-        else:
-            result.append(group)
-
-    return result
-            
-        
-
 class GmailSearchResult:
     """
     """
