@@ -119,6 +119,11 @@ def _parsePage(pageContent):
             # once (e.g. mail items, mail body) and automatically
             # places the values into list.
             # TODO: Check this actually works properly, it's early... :-)
+            ##print "double key",name
+            ##print parsedValue
+            if type(parsedValue[0]) is types.ListType:
+                for item in parsedValue:
+                    itemsDict[name].append(item)
             if (name in namesFoundTwice):
                 itemsDict[name].append(parsedValue)
             else:
@@ -135,6 +140,7 @@ def _parsePage(pageContent):
 ##    f.writelines(l)
 ##    f.close()
     #############################
+    
     return itemsDict
 
 def _splitBunches(infoItems):
@@ -382,7 +388,7 @@ class GmailAccount:
                   U_VIEW: U_THREADLIST_VIEW,
                   }
         params.update(kwargs)
-        
+        #print "search keywords",params
         return self._parsePage(_buildURL(**params))
 
 
@@ -392,8 +398,8 @@ class GmailAccount:
         Only works for thread-based results at present. # TODO: Change this?
         """
         start = 0
+        tot = 0
         threadsInfo = []
-
         # Option to get *all* threads if multiple pages are used.
         while (start == 0) or (allPages and
                                len(threadsInfo) < threadListSummary[TS_TOTAL]):
@@ -405,19 +411,18 @@ class GmailAccount:
                 except KeyError:
                     break
                 else:
-                    if type(threads[0]) not in [tuple, list]:#TODO:Urgh,change!
-                        threadsInfo.append(threads)
-                    else:
-                        # Note: This also handles when more than one "t"
-                        # "DataPack" is on a page.
-                        threadsInfo.extend(_splitBunches(threads))
-
+##                    print "\nthreads\n",threads
+##                    if not type(threads[0][0]) is types.ListType:
+##                        threadsInfo.append([threads])
+##                    else:
+                    threadsInfo.extend(_splitBunches(threads[0]))
+    
                     # TODO: Check if the total or per-page values have changed?
                     threadListSummary = items[D_THREADLIST_SUMMARY]
                     threadsPerPage = threadListSummary[TS_NUM]
-
+    
                     start += threadsPerPage
-        
+
         # TODO: Record whether or not we retrieved all pages..?
         return GmailSearchResult(self, (searchType, kwargs), threadsInfo)
 
@@ -1085,9 +1090,24 @@ class GmailSearchResult:
 
         `threadsInfo` -- As returned from Gmail but unbunched.
         """
+        #print "\nthreadsInfo\n",threadsInfo
+        try:
+            if not type(threadsInfo[0]) is types.ListType:
+                threadsInfo = [threadsInfo]
+        except IndexError:
+            print "Empty account"
+            threadsInfo = [ ['']*13 ]
         self._account = account
         self.search = search # TODO: Turn into object + format nicely.
-        self._threads = [GmailThread(self, thread) for thread in threadsInfo[0]]
+        self._threads = []
+        #print "\nthreadInfo\n",pprint.pprint(threadsInfo)
+        ####### debug code #########
+##        f = open('out.txt','w')
+##        pprint.pprint(threadsInfo,f,4)
+##        f.close()
+        #############################
+        for thread in threadsInfo:
+            self._threads.append(GmailThread(self, thread))
 
 
     def __iter__(self):
@@ -1171,6 +1191,8 @@ class GmailThread(_LabelHandlerMixin):
     def __init__(self, parent, threadsInfo):
         """
         """
+        #print "\nGmailThread\n",threadsInfo
+                    
         # TODO Handle this better?
         self._parent = parent
         self._account = self._parent._account
@@ -1229,13 +1251,6 @@ class GmailThread(_LabelHandlerMixin):
                                                  view = U_CONVERSATION_VIEW,
                                                  th = thread.id,
                                                  q = "in:anywhere")
-##        f = open('out.txt','w')
-##        l =[]
-##        for k,v in items.items():
-##            print "\n",k,"\n",v
-##            l.append("%s = %s\n" % (k,v))
-##        f.writelines(l)
-##        f.close()
         result = []
         # TODO: Handle this better?
         # Note: This handles both draft & non-draft messages in a thread...
@@ -1443,18 +1458,20 @@ if __name__ == "__main__":
                     result = ga.getMessagesByFolder(name, True)
                 else:
                     result = ga.getMessagesByLabel(name, True)
-
-                print
-                if len(result):
-                    for thread in result:
-                        print
-                        print thread.id, len(thread), thread.subject
-                        for msg in thread:
-                            print "  ", msg.id, msg.number, msg.subject
-                            #print msg.source
-                else:
+                    
+                if not len(result):
                     print "No threads found in `%s`." % name
-
+                    break
+                print result
+                tot = len(result._threads)
+                print "len _threads",tot
+                for thread in result._threads:
+                    tot -= 1
+                    print "threads left", tot
+                    print thread.id, len(thread), thread.subject
+                    for msg in thread:
+                        print "  ", msg.id, msg.number, msg.subject
+                        #print msg.source
                 print
             except KeyboardInterrupt:
                 break
