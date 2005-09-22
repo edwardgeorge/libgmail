@@ -4,7 +4,7 @@
 #
 ## To get the version number of the available libgmail version.
 ## Reminder: add date before next release.
-Version = '0.1.3.1' # (sep 2005)
+Version = '0.1.4' # (sep 2005)
 
 # Original author: follower@myrealbox.com
 # Maintainers: Waseem (wdaher@mit.edu) and Stas Z (stas@linux.isbeter.nl)
@@ -1338,7 +1338,10 @@ class GmailMessage(object):
         self.id = msgData[MI_MSGID]
         self.number = msgData[MI_NUM]
         self.subject = msgData[MI_SUBJECT]
-
+        self.cc = msgData[MI_CC]
+        self.bcc = msgData[MI_BCC]
+        self.sender = msgData[MI_AUTHOREMAIL]
+        
         self.attachments = [GmailAttachment(self, attachmentInfo)
                             for attachmentInfo in msgData[MI_ATTACHINFO]]
 
@@ -1494,7 +1497,8 @@ if __name__ == "__main__":
                 for thread in result:
                     #print thread.id, len(thread), thread.subject
                     for msg in thread:
-                        print "  ", msg.id, msg.number, msg.author,msg.subject
+                        print "\n ", msg.id, msg.number, msg.author,msg.subject
+                        print " ", msg.cc, msg.bcc,msg.sender
                         i += 1
                 print
                 print "number of threads:",tot
