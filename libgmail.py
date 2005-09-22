@@ -109,28 +109,37 @@ def _parsePage(pageContent):
     namesFoundTwice = []
     for item in items:
         #print "\nparsepage dict\n",item
+
         name = item[0]
+##        if name == 'mi':
+##            print "\nmi\n",item
         try:
             parsedValue = item[1:]
         except Exception:
             parsedValue = ['']
         if itemsDict.has_key(name):
             # This handles the case where a name key is used more than
-            # once (e.g. mail items, mail body) and automatically
+            # once (e.g. mail items, mail body etc) and automatically
             # places the values into list.
             # TODO: Check this actually works properly, it's early... :-)
-            ##print "double key",name
-            ##print parsedValue
-            if type(parsedValue[0]) is types.ListType:
-                for item in parsedValue:
-                    itemsDict[name].append(item)
-            if (name in namesFoundTwice):
-                itemsDict[name].append(parsedValue)
+            #print "\ndouble key",name
+            #print parsedValue
+            if len(parsedValue) and type(parsedValue[0]) is types.ListType:
+                    for item in parsedValue:
+                        itemsDict[name].append(item)
             else:
-                itemsDict[name] = [itemsDict[name], parsedValue]
-                namesFoundTwice.append(name)
+                itemsDict[name].append(parsedValue)
+                #itemsDict[name] = [itemsDict[name], parsedValue]
+            #namesFoundTwice.append(name)
         else:
-            itemsDict[name] = parsedValue
+            if len(parsedValue) and type(parsedValue[0]) is types.ListType:
+                    itemsDict[name] = []
+                    for item in parsedValue:
+                        itemsDict[name].append(item)
+            else:
+                itemsDict[name] = [parsedValue]
+##        if name == 'mi' and itemsDict.has_key('mi'):
+##            print "\nitemsDict mi\n",itemsDict['mi']        
     ####### debug code #########
 ##    f = open('out.txt','w')
 ##    l =[]
@@ -140,7 +149,6 @@ def _parsePage(pageContent):
 ##    f.writelines(l)
 ##    f.close()
     #############################
-    
     return itemsDict
 
 def _splitBunches(infoItems):
@@ -342,7 +350,11 @@ class GmailAccount:
             req = urlOrRequest
             
         self._cookieJar.setCookies(req)
-        resp = urllib2.urlopen(req)
+        try:
+            resp = urllib2.urlopen(req)
+        except urllib2.HTTPError,info:
+            print info
+            return None
         pageData = resp.read()
 
         # Extract cookies here
@@ -401,6 +413,7 @@ class GmailAccount:
         tot = 0
         threadsInfo = []
         # Option to get *all* threads if multiple pages are used.
+        f = open('out','w')
         while (start == 0) or (allPages and
                                len(threadsInfo) < threadListSummary[TS_TOTAL]):
             
@@ -411,18 +424,22 @@ class GmailAccount:
                 except KeyError:
                     break
                 else:
-##                    print "\nthreads\n",threads
-##                    if not type(threads[0][0]) is types.ListType:
-##                        threadsInfo.append([threads])
-##                    else:
-                    threadsInfo.extend(_splitBunches(threads[0]))
+                    
+                    #print "\nparse threads\n",threads
+                    for th in threads:
+                        if not type(th[0]) is types.ListType:
+                            th = [th]
+                            f.write("\n"+str(th)+"\n")
+                        #print "\nth\n",th
+                        threadsInfo.append(th)
+                    
     
                     # TODO: Check if the total or per-page values have changed?
-                    threadListSummary = items[D_THREADLIST_SUMMARY]
+                    threadListSummary = items[D_THREADLIST_SUMMARY][0]
                     threadsPerPage = threadListSummary[TS_NUM]
     
                     start += threadsPerPage
-
+        f.close()
         # TODO: Record whether or not we retrieved all pages..?
         return GmailSearchResult(self, (searchType, kwargs), threadsInfo)
 
@@ -470,7 +487,7 @@ class GmailAccount:
             # TODO: Handle this better...
             self.getMessagesByFolder(U_INBOX_SEARCH)
 
-        return self._cachedQuotaInfo[:3]
+        return self._cachedQuotaInfo[0][:3]
 
 
     def getLabelNames(self, refresh = False):
@@ -1096,7 +1113,12 @@ class GmailSearchResult:
                 threadsInfo = [threadsInfo]
         except IndexError:
             print "Empty account"
-            threadsInfo = [ ['']*13 ]
+            threadsInfo = [[['']*13]]
+##        try:
+##            if type(threadsInfo[0][0]) is types.ListType:
+##                threadsInfo = threadsInfo[0]
+##        except:
+##            pass
         self._account = account
         self.search = search # TODO: Turn into object + format nicely.
         self._threads = []
@@ -1107,7 +1129,7 @@ class GmailSearchResult:
 ##        f.close()
         #############################
         for thread in threadsInfo:
-            self._threads.append(GmailThread(self, thread))
+            self._threads.append(GmailThread(self, thread[0]))
 
 
     def __iter__(self):
@@ -1207,13 +1229,12 @@ class GmailThread(_LabelHandlerMixin):
         # Extract number of messages in thread/conversation.
 
         self._authors = threadsInfo[T_AUTHORS_HTML]
-
         try:
             # TODO: Find out if this information can be found another way...
             #       (Without another page request.)
             self._length = int(re.search("\((\d+?)\)\Z",
                                          self._authors).group(1))
-        except AttributeError:
+        except AttributeError,info:
             # If there's no message count then the thread only has one message.
             self._length = 1
 
@@ -1252,6 +1273,7 @@ class GmailThread(_LabelHandlerMixin):
                                                  th = thread.id,
                                                  q = "in:anywhere")
         result = []
+        #print "\nGmailThread\n",items
         # TODO: Handle this better?
         # Note: This handles both draft & non-draft messages in a thread...
         for key, isDraft in [(D_MSGINFO, False), (D_DRAFTINFO, True)]:
@@ -1261,11 +1283,13 @@ class GmailThread(_LabelHandlerMixin):
                 # No messages of this type (e.g. draft or non-draft)
                 continue
             else:
+                #print "\nlen\n",len(msgsInfo)
+                #pprint.pprint(msgsInfo)
                 # TODO: Handle special case of only 1 message in thread better?
-                if type(msgsInfo[0]) != type([]):
+                if type(msgsInfo[0]) != types.ListType:
                     msgsInfo = [msgsInfo]
                 for msg in msgsInfo:
-                    #print "\nmessage\n",msg
+                    #print "\nmessage\n",msg[5]
                     result += [GmailMessage(thread, msg, isDraft = isDraft)]
                            
 
@@ -1309,7 +1333,8 @@ class GmailMessage(object):
         #print "\nGmailMessage\n",msgData
         self._parent = parent
         self._account = self._parent._account
-        #print "\nmsgData\n",msgData
+        
+        self.author = msgData[MI_AUTHORFIRSTNAME]
         self.id = msgData[MI_MSGID]
         self.number = msgData[MI_NUM]
         self.subject = msgData[MI_SUBJECT]
@@ -1462,17 +1487,18 @@ if __name__ == "__main__":
                 if not len(result):
                     print "No threads found in `%s`." % name
                     break
-                print result
+                
                 tot = len(result._threads)
-                print "len _threads",tot
-                for thread in result._threads:
-                    tot -= 1
-                    print "threads left", tot
-                    print thread.id, len(thread), thread.subject
+                
+                i = 0
+                for thread in result:
+                    #print thread.id, len(thread), thread.subject
                     for msg in thread:
-                        print "  ", msg.id, msg.number, msg.subject
-                        #print msg.source
+                        print "  ", msg.id, msg.number, msg.author,msg.subject
+                        i += 1
                 print
+                print "number of threads:",tot
+                print "number of messages:",i
             except KeyboardInterrupt:
                 break
             
