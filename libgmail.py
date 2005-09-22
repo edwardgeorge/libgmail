@@ -4,7 +4,7 @@
 #
 ## To get the version number of the available libgmail version.
 ## Reminder: add date before next release.
-Version = '0.1.2' # (sep 2005)
+Version = '0.1.3.1' # (sep 2005)
 
 # Original author: follower@myrealbox.com
 # Maintainers: Waseem (wdaher@mit.edu) and Stas Z (stas@linux.isbeter.nl)
