@@ -91,12 +91,7 @@ def _parsePage(pageContent):
     lines = pageContent.splitlines()
     data = '\n'.join([x for x in lines if x and x[0] in ['D', ')', ',', ']']])
     data = data.replace(',,',',').replace(',,',',')
-    #check page data    
-##    test = data.split('\n')
-##    i = 0
-##    for line in test:
-##        i += 1
-##        print i," ",line
+
     result = []
     try:
         exec data in {'__builtins__': None}, {'D': lambda x: result.append(x)}
@@ -108,11 +103,7 @@ def _parsePage(pageContent):
     itemsDict = {}
     namesFoundTwice = []
     for item in items:
-        #print "\nparsepage dict\n",item
-
         name = item[0]
-##        if name == 'mi':
-##            print "\nmi\n",item
         try:
             parsedValue = item[1:]
         except Exception:
@@ -122,15 +113,12 @@ def _parsePage(pageContent):
             # once (e.g. mail items, mail body etc) and automatically
             # places the values into list.
             # TODO: Check this actually works properly, it's early... :-)
-            #print "\ndouble key",name
-            #print parsedValue
+            
             if len(parsedValue) and type(parsedValue[0]) is types.ListType:
                     for item in parsedValue:
                         itemsDict[name].append(item)
             else:
                 itemsDict[name].append(parsedValue)
-                #itemsDict[name] = [itemsDict[name], parsedValue]
-            #namesFoundTwice.append(name)
         else:
             if len(parsedValue) and type(parsedValue[0]) is types.ListType:
                     itemsDict[name] = []
@@ -138,20 +126,10 @@ def _parsePage(pageContent):
                         itemsDict[name].append(item)
             else:
                 itemsDict[name] = [parsedValue]
-##        if name == 'mi' and itemsDict.has_key('mi'):
-##            print "\nitemsDict mi\n",itemsDict['mi']        
-    ####### debug code #########
-##    f = open('out.txt','w')
-##    l =[]
-##    for k,v in itemsDict.items():
-##        print "\n",k,"\n",v
-##        l.append("%s = %s\n" % (k,v))
-##    f.writelines(l)
-##    f.close()
-    #############################
+
     return itemsDict
 
-def _splitBunches(infoItems):
+def _splitBunches(infoItems):# Is this still needed ?? Stas
     """
     Utility to help make it easy to iterate over each item separately,
     even if they were bunched on the page.
@@ -383,9 +361,6 @@ class GmailAccount:
         
         try:
             self._cachedLabelNames = [category[CT_NAME] for category in items[D_CATEGORIES][0]]
-            #### old code ####
-            ##self._cachedLabelNames = [category[CT_NAME] for category in items[D_CATEGORIES]]
-            ##################
         except KeyError:
             pass
         
@@ -400,7 +375,6 @@ class GmailAccount:
                   U_VIEW: U_THREADLIST_VIEW,
                   }
         params.update(kwargs)
-        #print "search keywords",params
         return self._parsePage(_buildURL(**params))
 
 
@@ -413,7 +387,6 @@ class GmailAccount:
         tot = 0
         threadsInfo = []
         # Option to get *all* threads if multiple pages are used.
-        f = open('out','w')
         while (start == 0) or (allPages and
                                len(threadsInfo) < threadListSummary[TS_TOTAL]):
             
@@ -424,22 +397,16 @@ class GmailAccount:
                 except KeyError:
                     break
                 else:
-                    
-                    #print "\nparse threads\n",threads
                     for th in threads:
                         if not type(th[0]) is types.ListType:
                             th = [th]
-                            f.write("\n"+str(th)+"\n")
-                        #print "\nth\n",th
                         threadsInfo.append(th)
-                    
-    
                     # TODO: Check if the total or per-page values have changed?
                     threadListSummary = items[D_THREADLIST_SUMMARY][0]
                     threadsPerPage = threadListSummary[TS_NUM]
     
                     start += threadsPerPage
-        f.close()
+        
         # TODO: Record whether or not we retrieved all pages..?
         return GmailSearchResult(self, (searchType, kwargs), threadsInfo)
 
@@ -513,7 +480,7 @@ class GmailAccount:
         """
         """
         # U_ORIGINAL_MESSAGE_VIEW seems the only one that returns a page.
-        # All the other U_* results in a 404 exception
+        # All the other U_* results in a 404 exception. Stas
         PageView = U_ORIGINAL_MESSAGE_VIEW  
         return self._retrievePage(
             _buildURL(view=PageView, th=msgId))
@@ -620,7 +587,7 @@ class GmailAccount:
 
         # TODO: Check composeid?
         result = None
-        resultInfo = items[D_SENDMAIL_RESULT]
+        resultInfo = items[D_SENDMAIL_RESULT][0]
         
         if resultInfo[SM_SUCCESS]:
             result = GmailMessageStub(id = resultInfo[SM_NEWTHREADID],
@@ -829,19 +796,12 @@ class GmailAccount:
         # pnl = a is necessary to get *all* contacts?
         myUrl = _buildURL(view='cl',search='contacts', pnl='a')
         myData = self._parsePage(myUrl)
-        #print "\nmyData\n",myData
         # This comes back with a dictionary
         # with entry 'cl'
         addresses = myData['cl']
         
         extractEntries(addresses)
-##        print "rawPage", self._retrievePage(myUrl)
-##        print "\n\n"
-##        print "myData", myData
-        #print "mydata[a]", myData['a']
-        #print "cl", contactList
-        #for x in contactList:
-        #    print "x:",x
+
         return GmailContactList(contactList)
 
     def addContact(self, name, email, notes=''):
@@ -856,7 +816,6 @@ class GmailAccount:
         # This mostly comes from the Johnvey Gmail API,
         # but also from the gmail.py cited earlier
         myURL = _buildURL(view='up')
-        # print 'gmailat cookie', self._cookieJar._cookies['GMAIL_AT']
         
         myData = urllib.urlencode({
                                    'act':'ec',
@@ -866,7 +825,7 @@ class GmailAccount:
                                    'ctf_n':notes,
                                    'ct_id':-1,
                                    }) 
-        #print 'my data:', myData
+        
         request = urllib2.Request(myURL,
                                   data = myData)
         pageData = self._retrievePage(request)
@@ -896,10 +855,8 @@ class GmailAccount:
         pageData = self._retrievePage(myURL)
 
         if pageData.find("The contact has been deleted") == -1:
-            # print pageData
             return False
         else:
-            # print pageData
             return True
 
     def removeContact(self, gmailContact):
@@ -1114,20 +1071,11 @@ class GmailSearchResult:
         except IndexError:
             print "Empty account"
             threadsInfo = [[['']*13]]
-##        try:
-##            if type(threadsInfo[0][0]) is types.ListType:
-##                threadsInfo = threadsInfo[0]
-##        except:
-##            pass
+
         self._account = account
         self.search = search # TODO: Turn into object + format nicely.
         self._threads = []
-        #print "\nthreadInfo\n",pprint.pprint(threadsInfo)
-        ####### debug code #########
-##        f = open('out.txt','w')
-##        pprint.pprint(threadsInfo,f,4)
-##        f.close()
-        #############################
+        
         for thread in threadsInfo:
             self._threads.append(GmailThread(self, thread[0]))
 
@@ -1213,8 +1161,7 @@ class GmailThread(_LabelHandlerMixin):
     def __init__(self, parent, threadsInfo):
         """
         """
-        #print "\nGmailThread\n",threadsInfo
-                    
+        
         # TODO Handle this better?
         self._parent = parent
         self._account = self._parent._account
@@ -1273,7 +1220,6 @@ class GmailThread(_LabelHandlerMixin):
                                                  th = thread.id,
                                                  q = "in:anywhere")
         result = []
-        #print "\nGmailThread\n",items
         # TODO: Handle this better?
         # Note: This handles both draft & non-draft messages in a thread...
         for key, isDraft in [(D_MSGINFO, False), (D_DRAFTINFO, True)]:
@@ -1283,13 +1229,10 @@ class GmailThread(_LabelHandlerMixin):
                 # No messages of this type (e.g. draft or non-draft)
                 continue
             else:
-                #print "\nlen\n",len(msgsInfo)
-                #pprint.pprint(msgsInfo)
                 # TODO: Handle special case of only 1 message in thread better?
                 if type(msgsInfo[0]) != types.ListType:
                     msgsInfo = [msgsInfo]
                 for msg in msgsInfo:
-                    #print "\nmessage\n",msg[5]
                     result += [GmailMessage(thread, msg, isDraft = isDraft)]
                            
 
@@ -1330,7 +1273,6 @@ class GmailMessage(object):
         """
         # TODO: Automatically detect if it's a draft or not?
         # TODO Handle this better?
-        #print "\nGmailMessage\n",msgData
         self._parent = parent
         self._account = self._parent._account
         
@@ -1495,10 +1437,11 @@ if __name__ == "__main__":
                 
                 i = 0
                 for thread in result:
-                    #print thread.id, len(thread), thread.subject
+                    print thread.id, len(thread), thread.subject
                     for msg in thread:
                         print "\n ", msg.id, msg.number, msg.author,msg.subject
-                        print " ", msg.cc, msg.bcc,msg.sender
+                        # Just as an example of other usefull things
+                        #print " ", msg.cc, msg.bcc,msg.sender
                         i += 1
                 print
                 print "number of threads:",tot
