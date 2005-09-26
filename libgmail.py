@@ -3,8 +3,9 @@
 # libgmail -- Gmail access via Python
 #
 ## To get the version number of the available libgmail version.
-## Reminder: add date before next release.
-Version = '0.1.4' # (sep 2005)
+## Reminder: add date before next release. This attribute is also
+## used in the setup script.
+Version = '0.1.3.2' # (sep 2005)
 
 # Original author: follower@myrealbox.com
 # Maintainers: Waseem (wdaher@mit.edu) and Stas Z (stas@linux.isbeter.nl)
@@ -474,8 +475,7 @@ class GmailAccount:
         """
         return self._parseThreadSearch(U_CATEGORY_SEARCH,
                                        cat=label, allPages = allPages)
-
-
+    
     def getRawMessage(self, msgId):
         """
         """
@@ -485,15 +485,23 @@ class GmailAccount:
         return self._retrievePage(
             _buildURL(view=PageView, th=msgId))
 
-
+    def getUnreadMessages(self):
+        """
+        """
+        return self._parseThreadSearch(U_QUERY_SEARCH,
+                                        q = "is:" + U_AS_SUBSET_UNREAD)
+        
+        
     def getUnreadMsgCount(self):
         """
         """
-        # TODO: Clean up queries a bit..?
         items = self._parseSearchResult(U_QUERY_SEARCH,
                                         q = "is:" + U_AS_SUBSET_UNREAD)
-
-        return items[D_THREADLIST_SUMMARY][TS_TOTAL_MSGS]
+        try:
+            result = items[D_THREADLIST_SUMMARY][0][TS_TOTAL_MSGS]
+        except KeyError:
+            result = 0
+        return result
 
 
     def _getActionToken(self):
@@ -1069,9 +1077,9 @@ class GmailSearchResult:
             if not type(threadsInfo[0]) is types.ListType:
                 threadsInfo = [threadsInfo]
         except IndexError:
-            print "Empty account"
+            print "No messages found"
             threadsInfo = [[['']*13]]
-
+            
         self._account = account
         self.search = search # TODO: Turn into object + format nicely.
         self._threads = []
@@ -1089,6 +1097,8 @@ class GmailSearchResult:
     def __len__(self):
         """
         """
+        if not self._threads[0][0]:
+                return 0
         return len(self._threads)
 
     def __getitem__(self,key):
@@ -1208,7 +1218,11 @@ class GmailThread(_LabelHandlerMixin):
         """
         if not self._messages:
             self._messages = self._getMessages(self)
-        return self._messages.__getitem__(key)
+        try:
+            result = self._messages.__getitem__(key)
+        except IndexError:
+            result = []
+        return result
 
     def _getMessages(self, thread):
         """
@@ -1433,10 +1447,11 @@ if __name__ == "__main__":
                     print "No threads found in `%s`." % name
                     break
                 
-                tot = len(result._threads)
+                tot = len(result)
                 
                 i = 0
                 for thread in result:
+                    print "%s messages in thread" % len(thread)
                     print thread.id, len(thread), thread.subject
                     for msg in thread:
                         print "\n ", msg.id, msg.number, msg.author,msg.subject

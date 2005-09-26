@@ -1,6 +1,10 @@
-== Version 0.1.4 ==
+== Version 0.1.3.2 ==
 libgmail.py
- * Added some attributes to the message class: cc, bcc, sender.
+ * Added some attributes to the message class: cc, bcc, sender. --SZ--
+ * Fixed the value returnt by a __len__ call to the threads. --SZ--
+ * Fixed bug in the sendmessage result --SZ--
+ * Added a exception catch to the getUnreadMsgCount method. --SZ--
+ * Added a method to only retrieve the unread messages from the inbox. --SZ--
  
 == Version 0.1.3.1 ==
 libgmail.py
