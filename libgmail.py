@@ -5,7 +5,7 @@
 ## To get the version number of the available libgmail version.
 ## Reminder: add date before next release. This attribute is also
 ## used in the setup script.
-Version = '0.1.3.2' # (sep 2005)
+Version = '0.1.3.3' # (sep 2005)
 
 # Original author: follower@myrealbox.com
 # Maintainers: Waseem (wdaher@mit.edu) and Stas Z (stas@linux.isbeter.nl)
@@ -618,7 +618,7 @@ class GmailAccount:
         items = self._parsePage(_buildURL(**params))
 
         # TODO: Mark as trashed on success?
-        return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
+        return (items[D_ACTION_RESULT][0][AR_SUCCESS] == 1)
 
 
     def _doThreadAction(self, actionId, thread):
@@ -636,7 +636,7 @@ class GmailAccount:
 
         items = self._parsePage(_buildURL(**params))
 
-        return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
+        return (items[D_ACTION_RESULT][0][AR_SUCCESS] == 1)
         
         
     def trashThread(self, thread):
@@ -683,8 +683,8 @@ class GmailAccount:
 
         # Note: Label name cache is updated by this call as well. (Handy!)
         items = self._parsePage(req)
-
-        return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
+        print items
+        return (items[D_ACTION_RESULT][0][AR_SUCCESS] == 1)
 
 
     def deleteLabel(self, labelName):
@@ -696,7 +696,7 @@ class GmailAccount:
         # Note: Label name cache is updated by this call as well. (Handy!)
         items = self._parsePage(req)
 
-        return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
+        return (items[D_ACTION_RESULT][0][AR_SUCCESS] == 1)
 
 
     def renameLabel(self, oldLabelName, newLabelName):
@@ -709,7 +709,7 @@ class GmailAccount:
         # Note: Label name cache is updated by this call as well. (Handy!)
         items = self._parsePage(req)
 
-        return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
+        return (items[D_ACTION_RESULT][0][AR_SUCCESS] == 1)
 
 
     def storeFile(self, filename, label = None):
