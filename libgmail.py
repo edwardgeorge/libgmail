@@ -1135,13 +1135,18 @@ class _LabelHandlerMixin(object):
     Note: Because a message id can be used as a thread id this works for
           messages as well as threads.
     """
-
+    def _makeLabelList(self, labelList):
+        self._labels = labelList
+    
     def addLabel(self, labelName):
         """
         """
         # Note: It appears this also automatically creates new labels.
         result = self._account._doThreadAction(U_ADDCATEGORY_ACTION+labelName,
                                                self)
+        if not self._labels:
+            self._makeLabelList([])
+        # TODO: Caching this seems a little dangerous; suppress duplicates maybe?
         self._labels.append(labelName)
         return result
 
@@ -1210,7 +1215,7 @@ class GmailThread(_LabelHandlerMixin):
         self._messages = []
 
         # Populate labels
-        self._labels = threadsInfo[T_CATEGORIES]
+        self._makeLabelList(threadsInfo[T_CATEGORIES])
 
         
     def __len__(self):
