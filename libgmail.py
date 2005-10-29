@@ -1142,7 +1142,7 @@ class _LabelHandlerMixin(object):
         # Note: It appears this also automatically creates new labels.
         result = self._account._doThreadAction(U_ADDCATEGORY_ACTION+labelName,
                                                self)
-        # TODO: Update list of attached labels?
+        self._labels.append(labelName)
         return result
 
 
@@ -1154,8 +1154,19 @@ class _LabelHandlerMixin(object):
         result = \
                self._account._doThreadAction(U_REMOVECATEGORY_ACTION+labelName,
                                              self)
-        # TODO: Update list of attached labels?
-        return result
+        
+        removeLabel = True
+        try:
+            self._labels.remove(labelName)
+        except:
+            removeLabel = False
+            pass
+    
+        # If we don't check both, we might end up in some weird inconsistent state
+        return result and removeLabel
+
+    def getLabels(self):
+        return self._labels
     
 
 
@@ -1197,6 +1208,9 @@ class GmailThread(_LabelHandlerMixin):
 
         # TODO: Store information known about the last message  (e.g. id)?
         self._messages = []
+
+        # Populate labels
+        self._labels = threadsInfo[T_CATEGORIES]
 
         
     def __len__(self):
@@ -1251,11 +1265,6 @@ class GmailThread(_LabelHandlerMixin):
                            
 
         return result
-
-
-    # TODO: Add property to retrieve list of labels for this message.
-    
-
 
 class GmailMessageStub(_LabelHandlerMixin):
     """
