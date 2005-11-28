@@ -711,7 +711,6 @@ class GmailAccount:
 
         return (items[D_ACTION_RESULT][0][AR_SUCCESS] == 1)
 
-
     def storeFile(self, filename, label = None):
         """
         """
@@ -1202,6 +1201,8 @@ class GmailThread(_LabelHandlerMixin):
         # Extract number of messages in thread/conversation.
 
         self._authors = threadsInfo[T_AUTHORS_HTML]
+        self.info = threadsInfo
+	
         try:
             # TODO: Find out if this information can be found another way...
             #       (Without another page request.)
@@ -1217,6 +1218,25 @@ class GmailThread(_LabelHandlerMixin):
         # Populate labels
         self._makeLabelList(threadsInfo[T_CATEGORIES])
 
+    def __getattr__(self, name):
+        """
+        Dynamically dispatch some interesting thread properties.
+        """
+        attrs = { 'unread': T_UNREAD,
+                  'star': T_STAR,
+                  'date': T_DATE_HTML,
+                  'authors': T_AUTHORS_HTML,
+                  'flags': T_FLAGS,
+                  'subject': T_SUBJECT_HTML,
+                  'snippet': T_SNIPPET_HTML,
+                  'categories': T_CATEGORIES,
+                  'attach': T_ATTACH_HTML,
+                  'matching_msgid': T_MATCHING_MSGID,
+                  'extra_snippet': T_EXTRA_SNIPPET }
+        if name in attrs:
+            return self.info[ attrs[name] ];
+
+        raise AttributeError("no attribute %s" % name)
         
     def __len__(self):
         """
