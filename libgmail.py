@@ -1218,7 +1218,6 @@ class GmailSearchResult:
                 threadsInfo = [threadsInfo]
         except IndexError:
             print "No messages found"
-            threadsInfo = [[['']*13]]
             
         self._account = account
         self.search = search # TODO: Turn into object + format nicely.
@@ -1231,17 +1230,11 @@ class GmailSearchResult:
     def __iter__(self):
         """
         """
-        if not self._threads[0][0]:
-            # We're empty, nothing to iterate on
-            return iter([])
         return iter(self._threads)
-
 
     def __len__(self):
         """
         """
-        if not self._threads[0][0]:
-                return 0
         return len(self._threads)
 
     def __getitem__(self,key):
