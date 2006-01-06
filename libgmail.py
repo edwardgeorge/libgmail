@@ -909,6 +909,7 @@ class GmailAccount:
             #       to the end user?
             
             print "Unable to delete."
+            print "Has someone else been modifying the contacts list while we have?"
             print "Old version of person:",gmailContact
             print "New version of person:",newVersionOfPersonToDelete
             return False
@@ -933,10 +934,66 @@ class GmailContact:
     Class for storing a Gmail Contacts list entry
     """
     def __init__(self, id, name, email, notes=''):
+        """
+        Deprecated constructor. Please use
+        the makeContact factory method instead
+        """
         self.id = id
         self.name = name
         self.email = email
         self.notes = notes
+        self.moreInfo = {}
+    def makeContact(self, name, email, notes='', moreInfo = {}):
+        """
+        Returns a new GmailContact object
+        (you can then call addContact on this to commit
+         it to the Gmail addressbook, for example)
+
+         moreInfo format
+         ---------------
+
+         Use special key values::
+
+                         'i' =  IM
+                         'p' =  Phone
+                         'd' =  Company
+                         'a' =  ADR
+                         'e' =  Email
+                         'm' =  Mobil
+                         'b' =  Pager
+                         'f' =  Fax
+                         't' =  Title
+                         'o' =  Other
+
+         Simple example::
+
+         moreInfo = {'Home': ( ('a','852 W Barry'),
+                             ('p', '1-773-244-1980'),
+                             ('i', 'aim:brianray34') ) }
+
+         Complex example::
+
+         moreInfo = {
+             'Personal': (('e', 'Home Email'),
+                         ('f', 'Home Fax')),
+             'Work': (('d', 'Sample Company'),
+                      ('t', 'Job Title'),
+                      ('o', 'Department: Department1'),
+                      ('o', 'Department: Department2'),
+                      ('p', 'Work Phone'),
+                      ('m', 'Mobil Phone'),
+                      ('f', 'Work Fax'),
+                      ('b', 'Pager')) }
+
+         Usage::
+
+            GmailContact.makeContact('Brian Ray','bray@sent.com','He Likes Python',moreInfo)
+        """
+        self.id = -1
+        self.name = name
+        self.email = email
+        self.notes = notes
+        self.moreInfo = moreInfo 
     def __str__(self):
         return "%s %s %s %s" % (self.id, self.name, self.email, self.notes)
     def __eq__(self, other):
@@ -954,6 +1011,8 @@ class GmailContact:
         return self.email
     def getNotes(self):
         return self.notes
+    def getMoreInfo(self):
+        return self.moreInfo
     def getVCard(self):
         """Returns a vCard 3.0 for this
         contact, as a string"""
@@ -1012,6 +1071,9 @@ class GmailContactList:
         """
         Gets the first contact in the
         address book whose name is 'email'.
+        As of this writing, Gmail insists
+        upon a unique email; i.e. two contacts
+        cannot share an email address.
 
         Returns False if no contact
         could be found
@@ -1040,8 +1102,7 @@ class GmailContactList:
         """
         This function returns a LIST
         of GmailContacts whose name is
-        'name'. We expect there only to
-        be one, but just in case!
+        'name'. 
 
         Returns an empty list if no contacts
         were found
@@ -1055,8 +1116,10 @@ class GmailContactList:
         """
         This function returns a LIST
         of GmailContacts whose email is
-        'email'. We expect there only to
-        be one, but just in case!
+        'email'. As of this writing, two contacts
+        cannot share an email address, so this
+        should only return just one item.
+        But it doesn't hurt to be prepared?
 
         Returns an empty list if no contacts
         were found
