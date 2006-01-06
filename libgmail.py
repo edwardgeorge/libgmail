@@ -1231,6 +1231,9 @@ class GmailSearchResult:
     def __iter__(self):
         """
         """
+        if not self._threads[0][0]:
+            # We're empty, nothing to iterate on
+            return iter([])
         return iter(self._threads)
 
 
