@@ -588,12 +588,13 @@ class GmailAccount:
             data = data.replace(FMT_MARKER % k, v)
         ####
         
-        req = urllib2.Request(_buildURL(search = "undefined"), data = data)
+        req = urllib2.Request(_buildURL(), data = data)
         req.add_header(*contentTypeHeader)
-
         items = self._parsePage(req)
 
         # TODO: Check composeid?
+        # Sometimes we get the success message
+        # but the id is 0 and no message is sent
         result = None
         resultInfo = items[D_SENDMAIL_RESULT][0]
         
