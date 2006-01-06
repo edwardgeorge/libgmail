@@ -739,19 +739,14 @@ class GmailAccount:
         GmailContacts
         """
         contactList = []
-        def addEntry(entry):
-            """
-            Add an entry to our contact list
-            """
-            # First, make sure the entry has at least an acceptable length
-            # (otherwise it doesn't have all the data we expect/need)
-            #
-            # We could probably be smarter about this... like if elements
-            # 1,2,and 4 are present, then just run with that. Though, we probably
-            # shouldn't rely on partially-well-formed data structures -- because
-            # if they change, chances are that something *bigger* in gmail changed
-            # that we're not ready to deal with
-            if len(entry) >= 6:
+        # pnl = a is necessary to get *all* contacts
+        myUrl = _buildURL(view='cl',search='contacts', pnl='a')
+        myData = self._parsePage(myUrl)
+        # This comes back with a dictionary
+        # with entry 'cl'
+        addresses = myData['cl']
+        for entry in addresses:
+            if len(entry) >= 6 and entry[0]=='ce':
                 newGmailContact = GmailContact(entry[1], entry[2], entry[4], entry[5])
                 #### new code used to get all the notes 
                 #### not used yet due to lockdown problems
@@ -759,55 +754,6 @@ class GmailAccount:
                 ##print rawnotes
                 ##newGmailContact = GmailContact(entry[1], entry[2], entry[4],rawnotes)
                 contactList.append(newGmailContact)
-
-        def extractEntries(possibleData):
-            """
-            Strip out entries from this potential entry chunk
-            (in an awesome recursive fashion)
-            """
-            # possibleData is either going to be an entry (which is a list),
-            # a tuple with up to 15 entries in it,
-            # or a list of tuples, each of which has up to 15 entries.
-            # So deal accordingly.
-            if type(possibleData) == types.ListType:
-                # Ok, either this is just one entry, or a list of tuples
-                # If this is just one entry, the first element
-                # will be 'ce'
-                if len(possibleData) >= 1 and possibleData[0]=='ce':
-                    addEntry(possibleData)
-                else:
-                    # Ok, this is the list of tuples
-                    for mytuple in possibleData:
-                        extractEntries(mytuple)
-            elif type(possibleData) == types.TupleType:
-                # Ok, this is a tuple of entries, probably
-                for entry in possibleData:
-                    extractEntries(entry)
-            elif type(possibleData) == types.StringType and possibleData == '':
-                # This is fine, empty addressbook
-                pass
-            else:
-                # We have no idea what this is
-                # Wouldn't it be better to replace the 'print' with a call to 'logging'
-                # like the rest of this lib does? (stas)
-                print "\n\n"
-                print "** We shouldn't be here! **"
-                print "DEBUG INFO:"
-                print "type of myData[a]:", type(possibleData)
-                print "myData[a]", myData['a']
-                print "ContactList:", contactList
-                for x in contactList:
-                    print "Entry:",x
-                raise RuntimeError("Gmail must have changed something. Please notify the libgmail developers.")
-        
-        # pnl = a is necessary to get *all* contacts?
-        myUrl = _buildURL(view='cl',search='contacts', pnl='a')
-        myData = self._parsePage(myUrl)
-        # This comes back with a dictionary
-        # with entry 'cl'
-        addresses = myData['cl']
-        
-        extractEntries(addresses)
 
         return GmailContactList(contactList)
 
