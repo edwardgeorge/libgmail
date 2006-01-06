@@ -843,24 +843,67 @@ class GmailAccount:
         
         # This mostly comes from the Johnvey Gmail API,
         # but also from the gmail.py cited earlier
-        myURL = _buildURL(view='up')
-        
-        myData = urllib.urlencode({
-                                   'act':'ec',
-                                   'at': self._cookieJar._cookies['GMAIL_AT'], # Cookie data?
-                                   'ct_nm': myContact.getName(),
-                                   'ct_em': myContact.getEmail(),
-                                   'ctf_n': myContact.getNotes(),
-                                   'ct_id':-1,
-                                   }) 
-        
+        myURL = _buildURL(view='up')        
+
+        myDataList =  [ ('act','ec'),
+                        ('at', self._cookieJar._cookies['GMAIL_AT']), # Cookie data?
+                        ('ct_nm', myContact.getName()),
+                        ('ct_em', myContact.getEmail()),
+                        ('ct_id', -1 )
+                       ]
+
+        notes = myContact.getNotes()
+        if notes != '':
+            myDataList.append( ('ctf_n', notes) )
+
+        validinfokeys = [
+                        'i', # IM
+                        'p', # Phone
+                        'd', # Company
+                        'a', # ADR
+                        'e', # Email
+                        'm', # Mobile
+                        'b', # Pager
+                        'f', # Fax
+                        't', # Title
+                        'o', # Other
+                        ]
+
+        moreInfo = myContact.getMoreInfo()
+        ctsn_num = -1
+        if moreInfo != {}:
+            for ctsf,ctsf_data in moreInfo.items():
+                ctsn_num += 1
+                # data section header, WORK, HOME,...
+                sectionenum ='ctsn_%02d' % ctsn_num
+                myDataList.append( ( sectionenum, ctsf ))
+                ctsf_num = -1
+
+                if isinstance(ctsf_data[0],str):
+                    ctsf_num += 1
+                    # data section
+                    subsectionenum = 'ctsf_%02d_%02d_%s' % (ctsn_num, ctsf_num, ctsf_data[0])  # ie. ctsf_00_01_p
+                    myDataList.append( (subsectionenum, ctsf_data[1]) )
+                else:
+                    for info in ctsf_data:
+                        if validinfokeys.count(info[0]) > 0:
+                            ctsf_num += 1
+                            # data section
+                            subsectionenum = 'ctsf_%02d_%02d_%s' % (ctsn_num, ctsf_num, info[0])  # ie. ctsf_00_01_p
+                            myDataList.append( (subsectionenum, info[1]) )
+
+        myData = urllib.urlencode(myDataList)
         request = urllib2.Request(myURL,
                                   data = myData)
         pageData = self._retrievePage(request)
 
         if pageData.find("The contact was successfully added") == -1:
             print pageData
-            return False
+            if pageData.find("already has the email address") > 0:
+                raise Exception("Someone with same email already exists in Gmail.")
+            elif pageData.find("https://www.google.com/accounts/ServiceLogin"):
+                raise Exception("Login has expired.")
+                return False
         else:
             return True
 
@@ -933,67 +976,34 @@ class GmailContact:
     """
     Class for storing a Gmail Contacts list entry
     """
-    def __init__(self, id, name, email, notes=''):
-        """
-        Deprecated constructor. Please use
-        the makeContact factory method instead
-        """
-        self.id = id
-        self.name = name
-        self.email = email
-        self.notes = notes
-        self.moreInfo = {}
-    def makeContact(self, name, email, notes='', moreInfo = {}):
+    def __init__(self, name, email, *extra_args):
         """
         Returns a new GmailContact object
         (you can then call addContact on this to commit
          it to the Gmail addressbook, for example)
 
-         moreInfo format
-         ---------------
-
-         Use special key values::
-
-                         'i' =  IM
-                         'p' =  Phone
-                         'd' =  Company
-                         'a' =  ADR
-                         'e' =  Email
-                         'm' =  Mobil
-                         'b' =  Pager
-                         'f' =  Fax
-                         't' =  Title
-                         'o' =  Other
-
-         Simple example::
-
-         moreInfo = {'Home': ( ('a','852 W Barry'),
-                             ('p', '1-773-244-1980'),
-                             ('i', 'aim:brianray34') ) }
-
-         Complex example::
-
-         moreInfo = {
-             'Personal': (('e', 'Home Email'),
-                         ('f', 'Home Fax')),
-             'Work': (('d', 'Sample Company'),
-                      ('t', 'Job Title'),
-                      ('o', 'Department: Department1'),
-                      ('o', 'Department: Department2'),
-                      ('p', 'Work Phone'),
-                      ('m', 'Mobil Phone'),
-                      ('f', 'Work Fax'),
-                      ('b', 'Pager')) }
-
-         Usage::
-
-            GmailContact.makeContact('Brian Ray','bray@sent.com','He Likes Python',moreInfo)
+        Consider calling setNotes() and setMoreInfo()
+        to add extended information to this contact
         """
-        self.id = -1
+        # Support populating other fields if we're trying
+        # to invoke this the old way, with the old constructor
+        # whose signature was __init__(self, id, name, email, notes='')
+        id = -1
+        notes = ''
+   
+        if len(extra_args) > 0:
+            (id, name) = (name, email)
+            email = extra_args[0]
+            if len(extra_args) > 1:
+                notes = extra_args[1]
+            else:
+                notes = ''
+
+        self.id = id
         self.name = name
         self.email = email
         self.notes = notes
-        self.moreInfo = moreInfo 
+        self.moreInfo = {}
     def __str__(self):
         return "%s %s %s %s" % (self.id, self.name, self.email, self.notes)
     def __eq__(self, other):
@@ -1011,8 +1021,54 @@ class GmailContact:
         return self.email
     def getNotes(self):
         return self.notes
+    def setNotes(self, notes):
+        """
+        Sets the notes field for this GmailContact
+        Note that this does NOT change the note
+        field on Gmail's end; only adding or removing
+        contacts modifies them
+        """
+        self.notes = notes
+
     def getMoreInfo(self):
         return self.moreInfo
+    def setMoreInfo(self, moreInfo):
+        """
+        moreInfo format
+        ---------------
+        Use special key values::
+                        'i' =  IM
+                        'p' =  Phone
+                        'd' =  Company
+                        'a' =  ADR
+                        'e' =  Email
+                        'm' =  Mobile
+                        'b' =  Pager
+                        'f' =  Fax
+                        't' =  Title
+                        'o' =  Other
+
+        Simple example::
+
+        moreInfo = {'Home': ( ('a','852 W Barry'),
+                              ('p', '1-773-244-1980'),
+                              ('i', 'aim:brianray34') ) }
+
+        Complex example::
+
+        moreInfo = {
+            'Personal': (('e', 'Home Email'),
+                         ('f', 'Home Fax')),
+            'Work': (('d', 'Sample Company'),
+                     ('t', 'Job Title'),
+                     ('o', 'Department: Department1'),
+                     ('o', 'Department: Department2'),
+                     ('p', 'Work Phone'),
+                     ('m', 'Mobile Phone'),
+                     ('f', 'Work Fax'),
+                     ('b', 'Pager')) }
+        """
+        self.moreInfo = moreInfo 
     def getVCard(self):
         """Returns a vCard 3.0 for this
         contact, as a string"""
