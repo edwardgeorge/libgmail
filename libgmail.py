@@ -811,12 +811,33 @@ class GmailAccount:
 
         return GmailContactList(contactList)
 
-    def addContact(self, name, email, notes=''):
+    def addContact(self, myContact, *extra_args):
         """
-        Attempts to add a contact to the gmail
+        Attempts to add a GmailContact to the gmail
         address book. Returns true if successful,
         false otherwise
+
+        Please note that after version 0.1.3.3,
+        addContact takes one argument of type
+        GmailContact, the contact to add.
+
+        The old signature of:
+        addContact(name, email, notes='') is still
+        supported, but deprecated. 
         """
+        if len(extra_args) > 0:
+            # The user has passed in extra arguments
+            # He/she is probably trying to invoke addContact
+            # using the old, deprecated signature of:
+            # addContact(self, name, email, notes='')        
+            # Build a GmailContact object and use that instead
+            (name, email) = (myContact, extra_args[0])
+            if len(extra_args) > 1:
+                notes = extra_args[1]
+            else:
+                notes = ''
+            myContact = GmailContact(-1, name, email, notes)
+
         # TODO: In the ideal world, we'd extract these specific
         # constants into a nice constants file
         
@@ -827,9 +848,9 @@ class GmailAccount:
         myData = urllib.urlencode({
                                    'act':'ec',
                                    'at': self._cookieJar._cookies['GMAIL_AT'], # Cookie data?
-                                   'ct_nm': name,
-                                   'ct_em':email,
-                                   'ctf_n':notes,
+                                   'ct_nm': myContact.getName(),
+                                   'ct_em': myContact.getEmail(),
+                                   'ctf_n': myContact.getNotes(),
                                    'ct_id':-1,
                                    }) 
         
@@ -891,6 +912,7 @@ class GmailAccount:
             print "Old version of person:",gmailContact
             print "New version of person:",newVersionOfPersonToDelete
             return False
+
 ## Don't remove this. contact stas
 ##    def _getSpecInfo(self,id):
 ##        """
