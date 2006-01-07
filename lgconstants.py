@@ -10,6 +10,22 @@
 # Generated: 2004-08-10 13:08 UTC
 #
 
+
+URL_LOGIN = "https://www.google.com/accounts/ServiceLoginBoxAuth"
+URL_GMAIL = "https://mail.google.com/mail/"
+
+
+# Constants with names not from the Gmail Javascript:
+U_SAVEDRAFT_VIEW = "sd"
+
+D_DRAFTINFO = "di"
+# NOTE: All other DI_* field offsets seem to match the MI_* field offsets
+DI_BODY = 19
+
+versionWarned = False # If the Javascript version is different have we
+                      # warned about it?
+
+
 js_version = '44f09303f2d4f76f'
 
 D_VERSION = "v"
@@ -207,3 +223,9 @@ COMPOSE_VIEW = "comp"
 HIDDEN_ACTION = 0
 USER_ACTION = 1
 BACKSPACE_ACTION = 2
+
+# TODO: Get these on the fly?
+STANDARD_FOLDERS = [U_INBOX_SEARCH, U_STARRED_SEARCH,
+                    U_ALL_SEARCH, U_DRAFTS_SEARCH,
+                    U_SENT_SEARCH, U_SPAM_SEARCH]
+

@@ -3,8 +3,9 @@
 # libgmail -- Gmail access via Python
 #
 ## To get the version number of the available libgmail version.
-## Reminder: add date before next release.
-Version = '0.1.2' # (??? 2005)
+## Reminder: add date before next release. This attribute is also
+## used in the setup script.
+Version = '0.1.4' # (sep 2005)
 
 # Original author: follower@myrealbox.com
 # Maintainers: Waseem (wdaher@mit.edu) and Stas Z (stas@linux.isbeter.nl)
@@ -38,12 +39,13 @@ Version = '0.1.2' # (??? 2005)
 
 LG_DEBUG=0
 from lgconstants import *
+# So we know what we get from the lgcontacts module, as a reminder
+from lgcontacts import GContacts,GmailContact,GmailContactList
 
-import os
+import os,pprint
 import re
 import urllib
 import urllib2
-import logging
 import mimetypes
 import types
 from cPickle import load, dump
@@ -52,83 +54,98 @@ from email.MIMEBase import MIMEBase
 from email.MIMEText import MIMEText
 from email.MIMEMultipart import MIMEMultipart
 
-URL_LOGIN = "https://www.google.com/accounts/ServiceLoginBoxAuth"
-URL_GMAIL = "https://mail.google.com/mail/"
-
-# TODO: Get these on the fly?
-STANDARD_FOLDERS = [U_INBOX_SEARCH, U_STARRED_SEARCH,
-                    U_ALL_SEARCH, U_DRAFTS_SEARCH,
-                    U_SENT_SEARCH, U_SPAM_SEARCH]
-
-# Constants with names not from the Gmail Javascript:
-# TODO: Move to `lgconstants.py`?
-U_SAVEDRAFT_VIEW = "sd"
-
-D_DRAFTINFO = "di"
-# NOTE: All other DI_* field offsets seem to match the MI_* field offsets
-DI_BODY = 19
-
-versionWarned = False # If the Javascript version is different have we
-                      # warned about it?
+## #Moved all this to lgconstants.py
+##URL_LOGIN = "https://www.google.com/accounts/ServiceLoginBoxAuth"
+##URL_GMAIL = "https://mail.google.com/mail/"
+##
+### TODO: Get these on the fly?
+##STANDARD_FOLDERS = [U_INBOX_SEARCH, U_STARRED_SEARCH,
+##                    U_ALL_SEARCH, U_DRAFTS_SEARCH,
+##                    U_SENT_SEARCH, U_SPAM_SEARCH]
+##
+### Constants with names not from the Gmail Javascript:
+### TODO: Move to `lgconstants.py`?
+##U_SAVEDRAFT_VIEW = "sd"
+##
+##D_DRAFTINFO = "di"
+### NOTE: All other DI_* field offsets seem to match the MI_* field offsets
+##DI_BODY = 19
+##
+##versionWarned = False # If the Javascript version is different have we
+##                      # warned about it?
 
 
 RE_SPLIT_PAGE_CONTENT = re.compile("D\((.*?)\);", re.DOTALL)
+
+class GmailError(Exception):
+    '''
+    Exception thrown upon gmail-specific failures, in particular a
+    failure to log in and a failure to parse responses.
+
+    '''
+    pass
+
+
 def _parsePage(pageContent):
     """
     Parse the supplied HTML page and extract useful information from
     the embedded Javascript.
     
     """
-    # Note: We use the easiest thing that works here and no longer
-    #       extract the Javascript code we want from the page first.
-    items = (re.findall(RE_SPLIT_PAGE_CONTENT, pageContent)) 
+    lines = pageContent.splitlines()
+    data = '\n'.join([x for x in lines if x and x[0] in ['D', ')', ',', ']']])
+    data = data.replace(',,',',').replace(',,',',')
 
-    # TODO: Check we find something?
-    
+    result = []
+    try:
+        exec data in {'__builtins__': None}, {'D': lambda x: result.append(x)}
+    except SyntaxError,info:
+        print info
+        raise GmailError, 'Failed to parse data returned from gmail.'
+
+    items = result 
     itemsDict = {}
-
     namesFoundTwice = []
-
     for item in items:
-        item = item.strip()[1:-1]
-        name, value = (item.split(",", 1) + [""])[:2]
-
-        name = name[1:-1] # Strip leading and trailing single or double quotes.
-        
+        name = item[0]
         try:
-            # By happy coincidence Gmail's data is stored in a form
-            # we can turn into Python data types by simply evaluating it.
-            # TODO: Parse this better/safer?
-            # TODO: Handle "mb" mail bodies better as they can be anything.
-            if value != "": # Empty strings aren't parsed successfully.
-                parsedValue = eval(value.replace("\n","").replace(",,",",None,").replace(",,",",None,")) # Yuck! Need two ",," replaces to handle ",,," overlap. TODO: Tidy this up... TODO: It appears there may have been a change in the number & order of at least the CS_* values, investigate.
+            parsedValue = item[1:]
+        except Exception:
+            parsedValue = ['']
+        if itemsDict.has_key(name):
+            # This handles the case where a name key is used more than
+            # once (e.g. mail items, mail body etc) and automatically
+            # places the values into list.
+            # TODO: Check this actually works properly, it's early... :-)
+            
+            if len(parsedValue) and type(parsedValue[0]) is types.ListType:
+                    for item in parsedValue:
+                        itemsDict[name].append(item)
             else:
-                parsedValue = value
-        except SyntaxError:
-            if LG_DEBUG: logging.warning("Could not parse item `%s` as it was `%s`." %
-                            (name, value))
+                itemsDict[name].append(parsedValue)
         else:
-            if itemsDict.has_key(name):
-                # This handles the case where a name key is used more than
-                # once (e.g. mail items, mail body) and automatically
-                # places the values into list.
-                # TODO: Check this actually works properly, it's early... :-)
-                if (name in namesFoundTwice):
-                    itemsDict[name].append(parsedValue)
-                else:
-                    itemsDict[name] = [itemsDict[name], parsedValue]
-                    namesFoundTwice.append(name)
+            if len(parsedValue) and type(parsedValue[0]) is types.ListType:
+                    itemsDict[name] = []
+                    for item in parsedValue:
+                        itemsDict[name].append(item)
             else:
-                itemsDict[name] = parsedValue
-
-    global versionWarned
-    if itemsDict[D_VERSION] != js_version and not versionWarned:
-        if LG_DEBUG: logging.debug("Live Javascript and constants file versions differ.")
-        versionWarned = True
+                itemsDict[name] = [parsedValue]
 
     return itemsDict
 
-
+def _splitBunches(infoItems):# Is this still needed ?? Stas
+    """
+    Utility to help make it easy to iterate over each item separately,
+    even if they were bunched on the page.
+    """
+    result= []
+    # TODO: Decide if this is the best approach.
+    for group in infoItems:
+        if type(group) == tuple:
+            result.extend(group)
+        else:
+            result.append(group)
+    return result
 
 class CookieJar:
     """
@@ -153,11 +170,10 @@ class CookieJar:
         # TODO: Do this all more nicely?
         for cookie in response.headers.getheaders('Set-Cookie'):
             name, value = (cookie.split("=", 1) + [""])[:2]
-            if LG_DEBUG: logging.debug("Extracted cookie `%s`" % (name))
+            if LG_DEBUG: print "Extracted cookie `%s`" % (name)
             if not nameFilter or name in nameFilter:
                 self._cookies[name] = value.split(";")[0]
-                if LG_DEBUG: logging.debug("Stored cookie `%s` value `%s`" %
-                              (name, self._cookies[name]))
+                if LG_DEBUG: print "Stored cookie `%s` value `%s`" % (name, self._cookies[name])
 
 
     def addCookie(self, name, value):
@@ -316,8 +332,11 @@ class GmailAccount:
             req = urlOrRequest
             
         self._cookieJar.setCookies(req)
-        resp = urllib2.urlopen(req)
-
+        try:
+            resp = urllib2.urlopen(req)
+        except urllib2.HTTPError,info:
+            print info
+            return None
         pageData = resp.read()
 
         # Extract cookies here
@@ -334,7 +353,6 @@ class GmailAccount:
         
         """
         items = _parsePage(self._retrievePage(urlOrRequest))
-        
         # Automatically cache some things like quota usage.
         # TODO: Cache more?
         # TODO: Expire cached values?
@@ -343,10 +361,10 @@ class GmailAccount:
             self._cachedQuotaInfo = items[D_QUOTA]
         except KeyError:
             pass
-
+        #pprint.pprint(items)
+        
         try:
-            self._cachedLabelNames = [category[CT_NAME]
-                                         for category in items[D_CATEGORIES]]
+            self._cachedLabelNames = [category[CT_NAME] for category in items[D_CATEGORIES][0]]
         except KeyError:
             pass
         
@@ -361,7 +379,6 @@ class GmailAccount:
                   U_VIEW: U_THREADLIST_VIEW,
                   }
         params.update(kwargs)
-        
         return self._parsePage(_buildURL(**params))
 
 
@@ -371,33 +388,29 @@ class GmailAccount:
         Only works for thread-based results at present. # TODO: Change this?
         """
         start = 0
+        tot = 0
         threadsInfo = []
-
         # Option to get *all* threads if multiple pages are used.
         while (start == 0) or (allPages and
                                len(threadsInfo) < threadListSummary[TS_TOTAL]):
             
                 items = self._parseSearchResult(searchType, start, **kwargs)
-
                 #TODO: Handle single & zero result case better? Does this work?
                 try:
                     threads = items[D_THREAD]
                 except KeyError:
                     break
                 else:
-                    if type(threads[0]) not in [tuple, list]:#TODO:Urgh,change!
-                        threadsInfo.append(threads)
-                    else:
-                        # Note: This also handles when more than one "t"
-                        # "DataPack" is on a page.
-                        threadsInfo.extend(_splitBunches(threads))
-
+                    for th in threads:
+                        if not type(th[0]) is types.ListType:
+                            th = [th]
+                        threadsInfo.append(th)
                     # TODO: Check if the total or per-page values have changed?
-                    threadListSummary = items[D_THREADLIST_SUMMARY]
+                    threadListSummary = items[D_THREADLIST_SUMMARY][0]
                     threadsPerPage = threadListSummary[TS_NUM]
-
+    
                     start += threadsPerPage
-
+        
         # TODO: Record whether or not we retrieved all pages..?
         return GmailSearchResult(self, (searchType, kwargs), threadsInfo)
 
@@ -445,7 +458,7 @@ class GmailAccount:
             # TODO: Handle this better...
             self.getMessagesByFolder(U_INBOX_SEARCH)
 
-        return self._cachedQuotaInfo[:3]
+        return self._cachedQuotaInfo[0][:3]
 
 
     def getLabelNames(self, refresh = False):
@@ -461,30 +474,36 @@ class GmailAccount:
 
     def getMessagesByLabel(self, label, allPages = False):
         """
-        
         """
         return self._parseThreadSearch(U_CATEGORY_SEARCH,
                                        cat=label, allPages = allPages)
-
-
+    
     def getRawMessage(self, msgId):
         """
         """
         # U_ORIGINAL_MESSAGE_VIEW seems the only one that returns a page.
-        # All the other U_* results in a 404 exception
+        # All the other U_* results in a 404 exception. Stas
         PageView = U_ORIGINAL_MESSAGE_VIEW  
         return self._retrievePage(
             _buildURL(view=PageView, th=msgId))
 
-
+    def getUnreadMessages(self):
+        """
+        """
+        return self._parseThreadSearch(U_QUERY_SEARCH,
+                                        q = "is:" + U_AS_SUBSET_UNREAD)
+        
+        
     def getUnreadMsgCount(self):
         """
         """
-        # TODO: Clean up queries a bit..?
         items = self._parseSearchResult(U_QUERY_SEARCH,
                                         q = "is:" + U_AS_SUBSET_UNREAD)
-
-        return items[D_THREADLIST_SUMMARY][TS_TOTAL_MSGS]
+        try:
+            result = items[D_THREADLIST_SUMMARY][0][TS_TOTAL_MSGS]
+        except KeyError:
+            result = 0
+        return result
 
 
     def _getActionToken(self):
@@ -571,14 +590,15 @@ class GmailAccount:
             data = data.replace(FMT_MARKER % k, v)
         ####
         
-        req = urllib2.Request(_buildURL(search = "undefined"), data = data)
+        req = urllib2.Request(_buildURL(), data = data)
         req.add_header(*contentTypeHeader)
-
         items = self._parsePage(req)
 
         # TODO: Check composeid?
+        # Sometimes we get the success message
+        # but the id is 0 and no message is sent
         result = None
-        resultInfo = items[D_SENDMAIL_RESULT]
+        resultInfo = items[D_SENDMAIL_RESULT][0]
         
         if resultInfo[SM_SUCCESS]:
             result = GmailMessageStub(id = resultInfo[SM_NEWTHREADID],
@@ -601,7 +621,7 @@ class GmailAccount:
         items = self._parsePage(_buildURL(**params))
 
         # TODO: Mark as trashed on success?
-        return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
+        return (items[D_ACTION_RESULT][0][AR_SUCCESS] == 1)
 
 
     def _doThreadAction(self, actionId, thread):
@@ -619,7 +639,7 @@ class GmailAccount:
 
         items = self._parsePage(_buildURL(**params))
 
-        return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
+        return (items[D_ACTION_RESULT][0][AR_SUCCESS] == 1)
         
         
     def trashThread(self, thread):
@@ -666,8 +686,8 @@ class GmailAccount:
 
         # Note: Label name cache is updated by this call as well. (Handy!)
         items = self._parsePage(req)
-
-        return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
+        print items
+        return (items[D_ACTION_RESULT][0][AR_SUCCESS] == 1)
 
 
     def deleteLabel(self, labelName):
@@ -679,7 +699,7 @@ class GmailAccount:
         # Note: Label name cache is updated by this call as well. (Handy!)
         items = self._parsePage(req)
 
-        return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
+        return (items[D_ACTION_RESULT][0][AR_SUCCESS] == 1)
 
 
     def renameLabel(self, oldLabelName, newLabelName):
@@ -692,8 +712,7 @@ class GmailAccount:
         # Note: Label name cache is updated by this call as well. (Handy!)
         items = self._parsePage(req)
 
-        return (items[D_ACTION_RESULT][AR_SUCCESS] == 1)
-
+        return (items[D_ACTION_RESULT][0][AR_SUCCESS] == 1)
 
     def storeFile(self, filename, label = None):
         """
@@ -715,360 +734,424 @@ class GmailAccount:
 
         return draftMsg
 
-    ## CONTACTS SUPPORT
-    def getContacts(self):
-        """
-        Returns a GmailContactList object
-        that has all the contacts in it as
-        GmailContacts
-        """
-        contactList = []
-        def addEntry(entry):
-            """
-            Add an entry to our contact list
-            """
-            # First, make sure the entry has at least an acceptable length
-            # (otherwise it doesn't have all the data we expect/need)
-            #
-            # We could probably be smarter about this... like if elements
-            # 1,2,and 4 are present, then just run with that. Though, we probably
-            # shouldn't rely on partially-well-formed data structures -- because
-            # if they change, chances are that something *bigger* in gmail changed
-            # that we're not ready to deal with
-            if len(entry) >= 6:
-                ##newGmailContact = GmailContact(entry[1], entry[2], entry[4], entry[5])
-                rawnotes = self._getSpecInfo(entry[1])
-                #print rawnotes
-                newGmailContact = GmailContact(entry[1], entry[2], entry[4],rawnotes)
-                contactList.append(newGmailContact)
+##    ## CONTACTS SUPPORT
+##    def getContacts(self):
+##        """
+##        Returns a GmailContactList object
+##        that has all the contacts in it as
+##        GmailContacts
+##        """
+##        contactList = []
+##        # pnl = a is necessary to get *all* contacts
+##        myUrl = _buildURL(view='cl',search='contacts', pnl='a')
+##        myData = self._parsePage(myUrl)
+##        # This comes back with a dictionary
+##        # with entry 'cl'
+##        addresses = myData['cl']
+##        for entry in addresses:
+##            if len(entry) >= 6 and entry[0]=='ce':
+##                newGmailContact = GmailContact(entry[1], entry[2], entry[4], entry[5])
+##                #### new code used to get all the notes 
+##                #### not used yet due to lockdown problems
+##                ##rawnotes = self._getSpecInfo(entry[1])
+##                ##print rawnotes
+##                ##newGmailContact = GmailContact(entry[1], entry[2], entry[4],rawnotes)
+##                contactList.append(newGmailContact)
+##
+##        return GmailContactList(contactList)
+##
+##    def addContact(self, myContact, *extra_args):
+##        """
+##        Attempts to add a GmailContact to the gmail
+##        address book. Returns true if successful,
+##        false otherwise
+##
+##        Please note that after version 0.1.3.3,
+##        addContact takes one argument of type
+##        GmailContact, the contact to add.
+##
+##        The old signature of:
+##        addContact(name, email, notes='') is still
+##        supported, but deprecated. 
+##        """
+##        if len(extra_args) > 0:
+##            # The user has passed in extra arguments
+##            # He/she is probably trying to invoke addContact
+##            # using the old, deprecated signature of:
+##            # addContact(self, name, email, notes='')        
+##            # Build a GmailContact object and use that instead
+##            (name, email) = (myContact, extra_args[0])
+##            if len(extra_args) > 1:
+##                notes = extra_args[1]
+##            else:
+##                notes = ''
+##            myContact = GmailContact(-1, name, email, notes)
+##
+##        # TODO: In the ideal world, we'd extract these specific
+##        # constants into a nice constants file
+##        
+##        # This mostly comes from the Johnvey Gmail API,
+##        # but also from the gmail.py cited earlier
+##        myURL = _buildURL(view='up')        
+##
+##        myDataList =  [ ('act','ec'),
+##                        ('at', self._cookieJar._cookies['GMAIL_AT']), # Cookie data?
+##                        ('ct_nm', myContact.getName()),
+##                        ('ct_em', myContact.getEmail()),
+##                        ('ct_id', -1 )
+##                       ]
+##
+##        notes = myContact.getNotes()
+##        if notes != '':
+##            myDataList.append( ('ctf_n', notes) )
+##
+##        validinfokeys = [
+##                        'i', # IM
+##                        'p', # Phone
+##                        'd', # Company
+##                        'a', # ADR
+##                        'e', # Email
+##                        'm', # Mobile
+##                        'b', # Pager
+##                        'f', # Fax
+##                        't', # Title
+##                        'o', # Other
+##                        ]
+##
+##        moreInfo = myContact.getMoreInfo()
+##        ctsn_num = -1
+##        if moreInfo != {}:
+##            for ctsf,ctsf_data in moreInfo.items():
+##                ctsn_num += 1
+##                # data section header, WORK, HOME,...
+##                sectionenum ='ctsn_%02d' % ctsn_num
+##                myDataList.append( ( sectionenum, ctsf ))
+##                ctsf_num = -1
+##
+##                if isinstance(ctsf_data[0],str):
+##                    ctsf_num += 1
+##                    # data section
+##                    subsectionenum = 'ctsf_%02d_%02d_%s' % (ctsn_num, ctsf_num, ctsf_data[0])  # ie. ctsf_00_01_p
+##                    myDataList.append( (subsectionenum, ctsf_data[1]) )
+##                else:
+##                    for info in ctsf_data:
+##                        if validinfokeys.count(info[0]) > 0:
+##                            ctsf_num += 1
+##                            # data section
+##                            subsectionenum = 'ctsf_%02d_%02d_%s' % (ctsn_num, ctsf_num, info[0])  # ie. ctsf_00_01_p
+##                            myDataList.append( (subsectionenum, info[1]) )
+##
+##        myData = urllib.urlencode(myDataList)
+##        request = urllib2.Request(myURL,
+##                                  data = myData)
+##        pageData = self._retrievePage(request)
+##
+##        if pageData.find("The contact was successfully added") == -1:
+##            print pageData
+##            if pageData.find("already has the email address") > 0:
+##                raise Exception("Someone with same email already exists in Gmail.")
+##            elif pageData.find("https://www.google.com/accounts/ServiceLogin"):
+##                raise Exception("Login has expired.")
+##            return False
+##        else:
+##            return True
+##
+##    def _removeContactById(self, id):
+##        """
+##        Attempts to remove the contact that occupies
+##        id "id" from the gmail address book.
+##        Returns True if successful,
+##        False otherwise.
+##
+##        This is a little dangerous since you don't really
+##        know who you're deleting. Really,
+##        this should return the name or something of the
+##        person we just killed.
+##
+##        Don't call this method.
+##        You should be using removeContact instead.
+##        """
+##        myURL = _buildURL(search='contacts', ct_id = id, c=id, act='dc', at=self._cookieJar._cookies['GMAIL_AT'], view='up')
+##        pageData = self._retrievePage(myURL)
+##
+##        if pageData.find("The contact has been deleted") == -1:
+##            return False
+##        else:
+##            return True
+##
+##    def removeContact(self, gmailContact):
+##        """
+##        Attempts to remove the GmailContact passed in
+##        Returns True if successful, False otherwise.
+##        """
+##        # Let's re-fetch the contact list to make
+##        # sure we're really deleting the guy
+##        # we think we're deleting
+##        newContactList = self.getContacts()
+##        newVersionOfPersonToDelete = newContactList.getContactById(gmailContact.getId())
+##        # Ok, now we need to ensure that gmailContact
+##        # is the same as newVersionOfPersonToDelete
+##        # and then we can go ahead and delete him/her
+##        if (gmailContact == newVersionOfPersonToDelete):
+##            return self._removeContactById(gmailContact.getId())
+##        else:
+##            # We have a cache coherency problem -- someone
+##            # else now occupies this ID slot.
+##            # TODO: Perhaps signal this in some nice way
+##            #       to the end user?
+##            
+##            print "Unable to delete."
+##            print "Has someone else been modifying the contacts list while we have?"
+##            print "Old version of person:",gmailContact
+##            print "New version of person:",newVersionOfPersonToDelete
+##            return False
+##
+#### Don't remove this. contact stas
+####    def _getSpecInfo(self,id):
+####        """
+####        Return all the notes data.
+####        This is currently not used due to the fact that it requests pages in 
+####        a dos attack manner.
+####        """
+####        myURL =_buildURL(search='contacts',ct_id=id,c=id,\
+####                        at=self._cookieJar._cookies['GMAIL_AT'],view='ct')
+####        pageData = self._retrievePage(myURL)
+####        myData = self._parsePage(myURL)
+####        #print "\nmyData form _getSpecInfo\n",myData
+####        rawnotes = myData['cov'][7]
+####        return rawnotes
 
-        def extractEntries(possibleData):
-            """
-            Strip out entries from this potential entry chunk
-            (in an awesome recursive fashion)
-            """
-            # possibleData is either going to be an entry (which is a list),
-            # a tuple with up to 15 entries in it,
-            # or a list of tuples, each of which has up to 15 entries.
-            # So deal accordingly.
-            if type(possibleData) == types.ListType:
-                # Ok, either this is just one entry, or a list of tuples
-                # If this is just one entry, the first element
-                # will be 'ce'
-                if len(possibleData) >= 1 and possibleData[0]=='ce':
-                    addEntry(possibleData)
-                else:
-                    # Ok, this is the list of tuples
-                    for mytuple in possibleData:
-                        extractEntries(mytuple)
-            elif type(possibleData) == types.TupleType:
-                # Ok, this is a tuple of entries, probably
-                for entry in possibleData:
-                    extractEntries(entry)
-            elif type(possibleData) == types.StringType and possibleData == '':
-                # This is fine, empty addressbook
-                pass
-            else:
-                # We have no idea what this is
-                # Wouldn't it be better to replace the 'print' with a call to 'logging'
-                # like the rest of this lib does? (stas)
-                print "\n\n"
-                print "** We shouldn't be here! **"
-                print "DEBUG INFO:"
-                print "type of myData[a]:", type(possibleData)
-                print "myData[a]", myData['a']
-                print "ContactList:", contactList
-                for x in contactList:
-                    print "Entry:",x
-                raise RuntimeError("Gmail must have changed something. Please notify the libgmail developers.")
-        
-        # pnl = a is necessary to get *all* contacts?
-        myUrl = _buildURL(view='cl',search='contacts', pnl='a')
-        myData = self._parsePage(myUrl)
-        # This comes back with a dictionary
-        # with entry 'cl'
-        addresses = myData['cl']
-        
-        extractEntries(addresses)
-##        print "rawPage", self._retrievePage(myUrl)
-##        print "\n\n"
-##        print "myData", myData
-        #print "mydata[a]", myData['a']
-        #print "cl", contactList
-        #for x in contactList:
-        #    print "x:",x
-        return GmailContactList(contactList)
-
-    def addContact(self, name, email, notes=''):
-        """
-        Attempts to add a contact to the gmail
-        address book. Returns true if successful,
-        false otherwise
-        """
-        # TODO: In the ideal world, we'd extract these specific
-        # constants into a nice constants file
-        
-        # This mostly comes from the Johnvey Gmail API,
-        # but also from the gmail.py cited earlier
-        myURL = _buildURL(view='up')
-        # print 'gmailat cookie', self._cookieJar._cookies['GMAIL_AT']
-        
-        myData = urllib.urlencode({
-                                   'act':'ec',
-                                   'at': self._cookieJar._cookies['GMAIL_AT'], # Cookie data?
-                                   'ct_nm': name,
-                                   'ct_em':email,
-                                   'ctf_n':notes,
-                                   'ct_id':-1,
-                                   }) 
-        #print 'my data:', myData
-        request = urllib2.Request(myURL,
-                                  data = myData)
-        pageData = self._retrievePage(request)
-
-        if pageData.find("The contact was successfully added") == -1:
-            print pageData
-            return False
-        else:
-            return True
-
-    def _removeContactById(self, id):
-        """
-        Attempts to remove the contact that occupies
-        id "id" from the gmail address book.
-        Returns True if successful,
-        False otherwise.
-
-        This is a little dangerous since you don't really
-        know who you're deleting. Really,
-        this should return the name or something of the
-        person we just killed.
-
-        Don't call this method.
-        You should be using removeContact instead.
-        """
-        myURL = _buildURL(search='contacts', ct_id = id, c=id, act='dc', at=self._cookieJar._cookies['GMAIL_AT'], view='up')
-        pageData = self._retrievePage(myURL)
-
-        if pageData.find("The contact has been deleted") == -1:
-            # print pageData
-            return False
-        else:
-            # print pageData
-            return True
-
-    def removeContact(self, gmailContact):
-        """
-        Attempts to remove the GmailContact passed in
-        Returns True if successful, False otherwise.
-        """
-        # Let's re-fetch the contact list to make
-        # sure we're really deleting the guy
-        # we think we're deleting
-        newContactList = self.getContacts()
-        newVersionOfPersonToDelete = newContactList.getContactById(gmailContact.getId())
-        # Ok, now we need to ensure that gmailContact
-        # is the same as newVersionOfPersonToDelete
-        # and then we can go ahead and delete him/her
-        if (gmailContact == newVersionOfPersonToDelete):
-            return self._removeContactById(gmailContact.getId())
-        else:
-            # We have a cache coherency problem -- someone
-            # else now occupies this ID slot.
-            # TODO: Perhaps signal this in some nice way
-            #       to the end user?
-            
-            print "Unable to delete."
-            print "Old version of person:",gmailContact
-            print "New version of person:",newVersionOfPersonToDelete
-            return False
-    def _getSpecInfo(self,id):
-        """
-        Return some cool notes data.
-        """
-        myURL =_buildURL(search='contacts',ct_id=id,c=id,\
-                        at=self._cookieJar._cookies['GMAIL_AT'],view='ct')
-        pageData = self._retrievePage(myURL)
-        myData = self._parsePage(myURL)
-        #print "myData",myData
-        rawnotes = myData['cov'][7]
-        return rawnotes[1]
-
-class GmailContact:
-    """
-    Class for storing a Gmail Contacts list entry
-    """
-    def __init__(self, id, name, email, notes=''):
-        self.id = id
-        self.name = name
-        self.email = email
-        self.notes = notes
-    def __str__(self):
-        return "%s %s %s %s" % (self.id, self.name, self.email, self.notes)
-    def __eq__(self, other):
-        if not isinstance(other, GmailContact):
-            return False
-        return (self.getId() == other.getId()) and \
-               (self.getName() == other.getName()) and \
-               (self.getEmail() == other.getEmail()) and \
-               (self.getNotes() == other.getNotes())
-    def getId(self):
-        return self.id
-    def getName(self):
-        return self.name
-    def getEmail(self):
-        return self.email
-    def getNotes(self):
-        return self.notes
-    def getVCard(self):
-        """Returns a vCard 3.0 for this
-        contact, as a string"""
-        # The \r is is to comply with the RFC2425 section 5.8.1
-        vcard = "BEGIN:VCARD\r\n"
-        vcard += "VERSION:3.0\r\n"
-        ## Deal with multiline notes
-        ##vcard += "NOTE:%s\n" % self.getNotes().replace("\n","\\n")
-        vcard += "NOTE:%s\r\n" % self.getNotes()
-        # Fake-out N by splitting up whatever we get out of getName
-        # This might not always do 'the right thing'
-        # but it's a *reasonable* compromise
-        fullname = self.getName().split()
-        fullname.reverse()
-        vcard += "N:%s" % ';'.join(fullname) + "\r\n"
-        vcard += "FN:%s\r\n" % self.getName()
-        vcard += "EMAIL;TYPE=INTERNET:%s\r\n" % self.getEmail()
-        vcard += "END:VCARD\r\n\r\n"
-        # Final newline in case we want to put more than one in a file
-        return vcard
-
-class GmailContactList:
-    """
-    Class for storing an entire Gmail contacts list
-    and retrieving contacts by Id, Email address, and name
-    """
-    def __init__(self, contactList):
-        self.contactList = contactList
-    def __str__(self):
-        return '\n'.join([str(item) for item in self.contactList])
-    def getCount(self):
-        """
-        Returns number of contacts
-        """
-        return len(self.contactList)
-    def getAllContacts(self):
-        """
-        Returns an array of all the
-        GmailContacts
-        """
-        return self.contactList
-    def getContactByName(self, name):
-        """
-        Gets the first contact in the
-        address book whose name is 'name'.
-
-        Returns False if no contact
-        could be found
-        """
-        nameList = self.getContactListByName(name)
-        if len(nameList) > 0:
-            return nameList[0]
-        else:
-            return False
-    def getContactByEmail(self, email):
-        """
-        Gets the first contact in the
-        address book whose name is 'email'.
-
-        Returns False if no contact
-        could be found
-        """
-        emailList = self.getContactListByEmail(email)
-        if len(emailList) > 0:
-            return emailList[0]
-        else:
-            return False
-    def getContactById(self, myId):
-        """
-        Gets the first contact in the
-        address book whose id is 'myId'.
-
-        REMEMBER: ID IS A STRING
-
-        Returns False if no contact
-        could be found
-        """
-        idList = self.getContactListById(myId)
-        if len(idList) > 0:
-            return idList[0]
-        else:
-            return False
-    def getContactListByName(self, name):
-        """
-        This function returns a LIST
-        of GmailContacts whose name is
-        'name'. We expect there only to
-        be one, but just in case!
-
-        Returns an empty list if no contacts
-        were found
-        """
-        nameList = []
-        for entry in self.contactList:
-            if entry.getName() == name:
-                nameList.append(entry)
-        return nameList
-    def getContactListByEmail(self, email):
-        """
-        This function returns a LIST
-        of GmailContacts whose email is
-        'email'. We expect there only to
-        be one, but just in case!
-
-        Returns an empty list if no contacts
-        were found
-        """
-        emailList = []
-        for entry in self.contactList:
-            if entry.getEmail() == email:
-                emailList.append(entry)
-        return emailList
-    def getContactListById(self, myId):
-        """
-        This function returns a LIST
-        of GmailContacts whose id is
-        'myId'. We expect there only to
-        be one, but just in case!
-
-        Remember: ID IS A STRING
-
-        Returns an empty list if no contacts
-        were found
-        """
-        idList = []
-        for entry in self.contactList:
-            if entry.getId() == myId:
-                idList.append(entry)
-        return idList
+##class GmailContact:
+##    """
+##    Class for storing a Gmail Contacts list entry
+##    """
+##    def __init__(self, name, email, *extra_args):
+##        """
+##        Returns a new GmailContact object
+##        (you can then call addContact on this to commit
+##         it to the Gmail addressbook, for example)
+##
+##        Consider calling setNotes() and setMoreInfo()
+##        to add extended information to this contact
+##        """
+##        # Support populating other fields if we're trying
+##        # to invoke this the old way, with the old constructor
+##        # whose signature was __init__(self, id, name, email, notes='')
+##        id = -1
+##        notes = ''
+##   
+##        if len(extra_args) > 0:
+##            (id, name) = (name, email)
+##            email = extra_args[0]
+##            if len(extra_args) > 1:
+##                notes = extra_args[1]
+##            else:
+##                notes = ''
+##
+##        self.id = id
+##        self.name = name
+##        self.email = email
+##        self.notes = notes
+##        self.moreInfo = {}
+##    def __str__(self):
+##        return "%s %s %s %s" % (self.id, self.name, self.email, self.notes)
+##    def __eq__(self, other):
+##        if not isinstance(other, GmailContact):
+##            return False
+##        return (self.getId() == other.getId()) and \
+##               (self.getName() == other.getName()) and \
+##               (self.getEmail() == other.getEmail()) and \
+##               (self.getNotes() == other.getNotes())
+##    def getId(self):
+##        return self.id
+##    def getName(self):
+##        return self.name
+##    def getEmail(self):
+##        return self.email
+##    def getNotes(self):
+##        return self.notes
+##    def setNotes(self, notes):
+##        """
+##        Sets the notes field for this GmailContact
+##        Note that this does NOT change the note
+##        field on Gmail's end; only adding or removing
+##        contacts modifies them
+##        """
+##        self.notes = notes
+##
+##    def getMoreInfo(self):
+##        return self.moreInfo
+##    def setMoreInfo(self, moreInfo):
+##        """
+##        moreInfo format
+##        ---------------
+##        Use special key values::
+##                        'i' =  IM
+##                        'p' =  Phone
+##                        'd' =  Company
+##                        'a' =  ADR
+##                        'e' =  Email
+##                        'm' =  Mobile
+##                        'b' =  Pager
+##                        'f' =  Fax
+##                        't' =  Title
+##                        'o' =  Other
+##
+##        Simple example::
+##
+##        moreInfo = {'Home': ( ('a','852 W Barry'),
+##                              ('p', '1-773-244-1980'),
+##                              ('i', 'aim:brianray34') ) }
+##
+##        Complex example::
+##
+##        moreInfo = {
+##            'Personal': (('e', 'Home Email'),
+##                         ('f', 'Home Fax')),
+##            'Work': (('d', 'Sample Company'),
+##                     ('t', 'Job Title'),
+##                     ('o', 'Department: Department1'),
+##                     ('o', 'Department: Department2'),
+##                     ('p', 'Work Phone'),
+##                     ('m', 'Mobile Phone'),
+##                     ('f', 'Work Fax'),
+##                     ('b', 'Pager')) }
+##        """
+##        self.moreInfo = moreInfo 
+##    def getVCard(self):
+##        """Returns a vCard 3.0 for this
+##        contact, as a string"""
+##        # The \r is is to comply with the RFC2425 section 5.8.1
+##        vcard = "BEGIN:VCARD\r\n"
+##        vcard += "VERSION:3.0\r\n"
+##        ## Deal with multiline notes
+##        ##vcard += "NOTE:%s\n" % self.getNotes().replace("\n","\\n")
+##        vcard += "NOTE:%s\r\n" % self.getNotes()
+##        # Fake-out N by splitting up whatever we get out of getName
+##        # This might not always do 'the right thing'
+##        # but it's a *reasonable* compromise
+##        fullname = self.getName().split()
+##        fullname.reverse()
+##        vcard += "N:%s" % ';'.join(fullname) + "\r\n"
+##        vcard += "FN:%s\r\n" % self.getName()
+##        vcard += "EMAIL;TYPE=INTERNET:%s\r\n" % self.getEmail()
+##        vcard += "END:VCARD\r\n\r\n"
+##        # Final newline in case we want to put more than one in a file
+##        return vcard
+##
+##class GmailContactList:
+##    """
+##    Class for storing an entire Gmail contacts list
+##    and retrieving contacts by Id, Email address, and name
+##    """
+##    def __init__(self, contactList):
+##        self.contactList = contactList
+##    def __str__(self):
+##        return '\n'.join([str(item) for item in self.contactList])
+##    def getCount(self):
+##        """
+##        Returns number of contacts
+##        """
+##        return len(self.contactList)
+##    def getAllContacts(self):
+##        """
+##        Returns an array of all the
+##        GmailContacts
+##        """
+##        return self.contactList
+##    def getContactByName(self, name):
+##        """
+##        Gets the first contact in the
+##        address book whose name is 'name'.
+##
+##        Returns False if no contact
+##        could be found
+##        """
+##        nameList = self.getContactListByName(name)
+##        if len(nameList) > 0:
+##            return nameList[0]
+##        else:
+##            return False
+##    def getContactByEmail(self, email):
+##        """
+##        Gets the first contact in the
+##        address book whose name is 'email'.
+##        As of this writing, Gmail insists
+##        upon a unique email; i.e. two contacts
+##        cannot share an email address.
+##
+##        Returns False if no contact
+##        could be found
+##        """
+##        emailList = self.getContactListByEmail(email)
+##        if len(emailList) > 0:
+##            return emailList[0]
+##        else:
+##            return False
+##    def getContactById(self, myId):
+##        """
+##        Gets the first contact in the
+##        address book whose id is 'myId'.
+##
+##        REMEMBER: ID IS A STRING
+##
+##        Returns False if no contact
+##        could be found
+##        """
+##        idList = self.getContactListById(myId)
+##        if len(idList) > 0:
+##            return idList[0]
+##        else:
+##            return False
+##    def getContactListByName(self, name):
+##        """
+##        This function returns a LIST
+##        of GmailContacts whose name is
+##        'name'. 
+##
+##        Returns an empty list if no contacts
+##        were found
+##        """
+##        nameList = []
+##        for entry in self.contactList:
+##            if entry.getName() == name:
+##                nameList.append(entry)
+##        return nameList
+##    def getContactListByEmail(self, email):
+##        """
+##        This function returns a LIST
+##        of GmailContacts whose email is
+##        'email'. As of this writing, two contacts
+##        cannot share an email address, so this
+##        should only return just one item.
+##        But it doesn't hurt to be prepared?
+##
+##        Returns an empty list if no contacts
+##        were found
+##        """
+##        emailList = []
+##        for entry in self.contactList:
+##            if entry.getEmail() == email:
+##                emailList.append(entry)
+##        return emailList
+##    def getContactListById(self, myId):
+##        """
+##        This function returns a LIST
+##        of GmailContacts whose id is
+##        'myId'. We expect there only to
+##        be one, but just in case!
+##
+##        Remember: ID IS A STRING
+##
+##        Returns an empty list if no contacts
+##        were found
+##        """
+##        idList = []
+##        for entry in self.contactList:
+##            if entry.getId() == myId:
+##                idList.append(entry)
+##        return idList
     
-def _splitBunches(infoItems):
-    """
-
-    Utility to help make it easy to iterate over each item separately,
-    even if they were bunched on the page.
-    """
-    result= []
-
-    # TODO: Decide if this is the best approach.
-    for group in infoItems:
-        if type(group) == tuple:
-            result.extend(group)
-        else:
-            result.append(group)
-
-    return result
-            
-        
-
 class GmailSearchResult:
     """
     """
@@ -1078,18 +1161,25 @@ class GmailSearchResult:
 
         `threadsInfo` -- As returned from Gmail but unbunched.
         """
+        #print "\nthreadsInfo\n",threadsInfo
+        try:
+            if not type(threadsInfo[0]) is types.ListType:
+                threadsInfo = [threadsInfo]
+        except IndexError:
+            print "No messages found"
+            
         self._account = account
         self.search = search # TODO: Turn into object + format nicely.
-
-        self._threads = [GmailThread(self, thread)
-                         for thread in threadsInfo]
+        self._threads = []
+        
+        for thread in threadsInfo:
+            self._threads.append(GmailThread(self, thread[0]))
 
 
     def __iter__(self):
         """
         """
         return iter(self._threads)
-
 
     def __len__(self):
         """
@@ -1130,14 +1220,19 @@ class _LabelHandlerMixin(object):
     Note: Because a message id can be used as a thread id this works for
           messages as well as threads.
     """
-
+    def _makeLabelList(self, labelList):
+        self._labels = labelList
+    
     def addLabel(self, labelName):
         """
         """
         # Note: It appears this also automatically creates new labels.
         result = self._account._doThreadAction(U_ADDCATEGORY_ACTION+labelName,
                                                self)
-        # TODO: Update list of attached labels?
+        if not self._labels:
+            self._makeLabelList([])
+        # TODO: Caching this seems a little dangerous; suppress duplicates maybe?
+        self._labels.append(labelName)
         return result
 
 
@@ -1149,8 +1244,19 @@ class _LabelHandlerMixin(object):
         result = \
                self._account._doThreadAction(U_REMOVECATEGORY_ACTION+labelName,
                                              self)
-        # TODO: Update list of attached labels?
-        return result
+        
+        removeLabel = True
+        try:
+            self._labels.remove(labelName)
+        except:
+            removeLabel = False
+            pass
+    
+        # If we don't check both, we might end up in some weird inconsistent state
+        return result and removeLabel
+
+    def getLabels(self):
+        return self._labels
     
 
 
@@ -1163,36 +1269,60 @@ class GmailThread(_LabelHandlerMixin):
     
     """
 
-    def __init__(self, parent, threadInfo):
+    def __init__(self, parent, threadsInfo):
         """
         """
+        
         # TODO Handle this better?
         self._parent = parent
         self._account = self._parent._account
         
-        self.id = threadInfo[T_THREADID] # TODO: Change when canonical updated?
-        self.subject = threadInfo[T_SUBJECT_HTML]
+        self.id = threadsInfo[T_THREADID] # TODO: Change when canonical updated?
+        self.subject = threadsInfo[T_SUBJECT_HTML]
 
-        self.snippet = threadInfo[T_SNIPPET_HTML]
+        self.snippet = threadsInfo[T_SNIPPET_HTML]
         #self.extraSummary = threadInfo[T_EXTRA_SNIPPET] #TODO: What is this?
 
         # TODO: Store other info?
         # Extract number of messages in thread/conversation.
 
-        self._authors = threadInfo[T_AUTHORS_HTML]
-
+        self._authors = threadsInfo[T_AUTHORS_HTML]
+        self.info = threadsInfo
+        
         try:
             # TODO: Find out if this information can be found another way...
             #       (Without another page request.)
             self._length = int(re.search("\((\d+?)\)\Z",
                                          self._authors).group(1))
-        except AttributeError:
+        except AttributeError,info:
             # If there's no message count then the thread only has one message.
             self._length = 1
 
         # TODO: Store information known about the last message  (e.g. id)?
         self._messages = []
 
+        # Populate labels
+        self._makeLabelList(threadsInfo[T_CATEGORIES])
+
+    def __getattr__(self, name):
+        """
+        Dynamically dispatch some interesting thread properties.
+        """
+        attrs = { 'unread': T_UNREAD,
+                  'star': T_STAR,
+                  'date': T_DATE_HTML,
+                  'authors': T_AUTHORS_HTML,
+                  'flags': T_FLAGS,
+                  'subject': T_SUBJECT_HTML,
+                  'snippet': T_SNIPPET_HTML,
+                  'categories': T_CATEGORIES,
+                  'attach': T_ATTACH_HTML,
+                  'matching_msgid': T_MATCHING_MSGID,
+                  'extra_snippet': T_EXTRA_SNIPPET }
+        if name in attrs:
+            return self.info[ attrs[name] ];
+
+        raise AttributeError("no attribute %s" % name)
         
     def __len__(self):
         """
@@ -1213,7 +1343,11 @@ class GmailThread(_LabelHandlerMixin):
         """
         if not self._messages:
             self._messages = self._getMessages(self)
-        return self._messages.__getitem__(key)
+        try:
+            result = self._messages.__getitem__(key)
+        except IndexError:
+            result = []
+        return result
 
     def _getMessages(self, thread):
         """
@@ -1224,7 +1358,6 @@ class GmailThread(_LabelHandlerMixin):
                                                  view = U_CONVERSATION_VIEW,
                                                  th = thread.id,
                                                  q = "in:anywhere")
-
         result = []
         # TODO: Handle this better?
         # Note: This handles both draft & non-draft messages in a thread...
@@ -1236,18 +1369,13 @@ class GmailThread(_LabelHandlerMixin):
                 continue
             else:
                 # TODO: Handle special case of only 1 message in thread better?
-                if type(msgsInfo) != type([]):
+                if type(msgsInfo[0]) != types.ListType:
                     msgsInfo = [msgsInfo]
-
-                result += [GmailMessage(thread, msg, isDraft = isDraft)
-                           for msg in msgsInfo]
+                for msg in msgsInfo:
+                    result += [GmailMessage(thread, msg, isDraft = isDraft)]
+                           
 
         return result
-
-
-    # TODO: Add property to retrieve list of labels for this message.
-    
-
 
 class GmailMessageStub(_LabelHandlerMixin):
     """
@@ -1282,10 +1410,14 @@ class GmailMessage(object):
         self._parent = parent
         self._account = self._parent._account
         
+        self.author = msgData[MI_AUTHORFIRSTNAME]
         self.id = msgData[MI_MSGID]
         self.number = msgData[MI_NUM]
         self.subject = msgData[MI_SUBJECT]
-
+        self.cc = msgData[MI_CC]
+        self.bcc = msgData[MI_BCC]
+        self.sender = msgData[MI_AUTHOREMAIL]
+        
         self.attachments = [GmailAttachment(self, attachmentInfo)
                             for attachmentInfo in msgData[MI_ATTACHINFO]]
 
@@ -1430,19 +1562,25 @@ if __name__ == "__main__":
                     result = ga.getMessagesByFolder(name, True)
                 else:
                     result = ga.getMessagesByLabel(name, True)
-
-                print
-                if len(result):
-                    for thread in result:
-                        print
-                        print thread.id, len(thread), thread.subject
-                        for msg in thread:
-                            print "  ", msg.id, msg.number, msg.subject
-                            #print msg.source
-                else:
+                    
+                if not len(result):
                     print "No threads found in `%s`." % name
-
+                    break
+                
+                tot = len(result)
+                
+                i = 0
+                for thread in result:
+                    print "%s messages in thread" % len(thread)
+                    print thread.id, len(thread), thread.subject
+                    for msg in thread:
+                        print "\n ", msg.id, msg.number, msg.author,msg.subject
+                        # Just as an example of other usefull things
+                        #print " ", msg.cc, msg.bcc,msg.sender
+                        i += 1
                 print
+                print "number of threads:",tot
+                print "number of messages:",i
             except KeyboardInterrupt:
                 break
             
