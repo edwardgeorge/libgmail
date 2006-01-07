@@ -5,7 +5,7 @@
 ## To get the version number of the available libgmail version.
 ## Reminder: add date before next release. This attribute is also
 ## used in the setup script.
-Version = '0.1.3.3' # (sep 2005)
+Version = '0.1.4' # (sep 2005)
 
 # Original author: follower@myrealbox.com
 # Maintainers: Waseem (wdaher@mit.edu) and Stas Z (stas@linux.isbeter.nl)
@@ -471,7 +471,6 @@ class GmailAccount:
 
     def getMessagesByLabel(self, label, allPages = False):
         """
-        
         """
         return self._parseThreadSearch(U_CATEGORY_SEARCH,
                                        cat=label, allPages = allPages)
@@ -850,7 +849,7 @@ class GmailAccount:
                 raise Exception("Someone with same email already exists in Gmail.")
             elif pageData.find("https://www.google.com/accounts/ServiceLogin"):
                 raise Exception("Login has expired.")
-                return False
+            return False
         else:
             return True
 

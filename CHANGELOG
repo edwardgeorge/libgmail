@@ -1,5 +1,5 @@
 libgmail (0.1.3.3)
-    * Fixed some bugs in the return values of the label methods.
+    * Fixed some bugs in the return values of the label methods. --SZ--
 
 == Version 0.1.3.2 ==
 libgmail.py
