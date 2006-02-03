@@ -1,7 +1,21 @@
-libgmail (0.1.4)
+== Version 0.1.4 ==
+libgmail.py
     * Started new contacts code. --SZ--
+    * Bugfix involving 404 error raised when trying to send
+      an email (SF bug #1398323) --WD--
+    * Bugfix for broken len() iterator in GmailSearchResult
+      (SF bug #1365166) --WD--
+    * Bugfix for improper marking of messages as read
+      (SF bug #1365188) --WD--
 
-libgmail (0.1.3.3)
+    NOTE: Expect an improved Contacts API in the next release.
+          We will strive for backwards-compatibility where
+          possible, but be prepared for possible changes.
+          Please feel free to contact us if you have
+          questions/comments/concerns about this.
+ 
+== Version 0.1.3.3 ==
+libgmail.py
     * Fixed some bugs in the return values of the label methods. --SZ--
 
 == Version 0.1.3.2 ==
