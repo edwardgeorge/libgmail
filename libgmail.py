@@ -1285,7 +1285,7 @@ class GmailThread(_LabelHandlerMixin):
 
         self._authors = threadsInfo[T_AUTHORS_HTML]
         self.info = threadsInfo
-	
+    
         try:
             # TODO: Find out if this information can be found another way...
             #       (Without another page request.)
@@ -1546,15 +1546,18 @@ if __name__ == "__main__":
         print "%s of %s used. (%s)\n" % (quotaMbUsed, quotaMbTotal, quotaPercent)
 
         searches = STANDARD_FOLDERS + ga.getLabelNames()
-
+        name = None
         while 1:
             try:
                 print "Select folder or label to list: (Ctrl-C to exit)"
                 for optionId, optionName in enumerate(searches):
                     print "  %d. %s" % (optionId, optionName)
-
-                name = searches[int(raw_input("Choice: "))]
-
+                while not name:
+                    try:
+                        name = searches[int(raw_input("Choice: "))]
+                    except ValueError,info:
+                        print info
+                        name = None
                 if name in STANDARD_FOLDERS:
                     result = ga.getMessagesByFolder(name, True)
                 else:
@@ -1563,7 +1566,7 @@ if __name__ == "__main__":
                 if not len(result):
                     print "No threads found in `%s`." % name
                     break
-                
+                name = None
                 tot = len(result)
                 
                 i = 0

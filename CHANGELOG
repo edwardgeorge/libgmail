@@ -1,3 +1,7 @@
+== Version 0.1.5 ==
+libgmail.py
+    * Fixed exception in the testcode (SF bug #1486703) --SZ--
+
 == Version 0.1.4 ==
 libgmail.py
     * Started new contacts code. --SZ--
