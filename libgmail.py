@@ -91,8 +91,9 @@ def _parsePage(pageContent):
     """
     lines = pageContent.splitlines()
     data = '\n'.join([x for x in lines if x and x[0] in ['D', ')', ',', ']']])
-    data = data.replace(',,',',').replace(',,',',')
-
+    #data = data.replace(',,',',').replace(',,',',')
+    data = re.sub(',{2,}', ',', data)
+    
     result = []
     try:
         exec data in {'__builtins__': None}, {'D': lambda x: result.append(x)}
