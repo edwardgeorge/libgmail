@@ -5,7 +5,7 @@
 ## To get the version number of the available libgmail version.
 ## Reminder: add date before next release. This attribute is also
 ## used in the setup script.
-Version = '0.1.4' # (Feb 2006)
+Version = '0.1.5' # (Aug 2006)
 
 # Original author: follower@myrealbox.com
 # Maintainers: Waseem (wdaher@mit.edu) and Stas Z (stas@linux.isbeter.nl)
@@ -305,14 +305,13 @@ class GmailAccount:
         
         # TODO: Tidy this up?
         # This requests the page that provides the required "GV" cookie.
-        RE_PAGE_REDIRECT = 'CheckCookie\?continue=([^"]+)'
+        RE_PAGE_REDIRECT = 'CheckCookie\?continue=([^"\']+)'
 
 
         # TODO: Catch more failure exceptions here...?
-        
+        link = re.search(RE_PAGE_REDIRECT, pageData).group(1)
         try:
-            redirectURL = urllib.unquote(re.search(RE_PAGE_REDIRECT,
-                                                   pageData).group(1))
+            redirectURL = urllib.unquote(link)
             
         except AttributeError:
             raise GmailLoginFailure("Login failed. (Wrong username/password?)")
@@ -1412,6 +1411,7 @@ class GmailMessage(object):
         self.id = msgData[MI_MSGID]
         self.number = msgData[MI_NUM]
         self.subject = msgData[MI_SUBJECT]
+        self.to = msgData[MI_TO]
         self.cc = msgData[MI_CC]
         self.bcc = msgData[MI_BCC]
         self.sender = msgData[MI_AUTHOREMAIL]
