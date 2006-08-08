@@ -1,3 +1,9 @@
+== Version 0.1.5.1 ==
+libgmail.py
+    * Minor bugfix release -- logging in with the wrong
+      username and password caused a crash instead of
+      the appropriate thrown exception --WD--
+
 == Version 0.1.5 ==
 libgmail.py
     * Fixed exception in the testcode (SF bug #1486703) --SZ--
