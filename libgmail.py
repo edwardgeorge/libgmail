@@ -1417,7 +1417,7 @@ class GmailMessage(object):
         self.sender = msgData[MI_AUTHOREMAIL]
         
         self.attachments = [GmailAttachment(self, attachmentInfo)
-                            for attachmentInfo in msgData[MI_ATTACHINFO]]
+                            for attachmentInfo in msgData[MI_ATTACHINFO-1]]
 
         # TODO: Populate additional fields & cache...(?)
 
