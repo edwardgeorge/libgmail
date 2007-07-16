@@ -1,3 +1,7 @@
+== Version 0.1.6 == 
+libgmail.py
+    * Added support for "Gmail Apps" aka "Gmail For Your Domain" --WD--
+
 == Version 0.1.5.1 ==
 libgmail.py
     * Minor bugfix release -- logging in with the wrong
