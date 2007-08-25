@@ -357,6 +357,7 @@ class GmailAccount:
             try:
                 link = re.search(RE_PAGE_REDIRECT, pageData).group(1)
                 redirectURL = urllib2.unquote(link)
+                redirectURL = redirectURL.replace('\\x26', '&')
             
             except AttributeError:
                 raise GmailLoginFailure("Login failed. (Wrong username/password?)")
