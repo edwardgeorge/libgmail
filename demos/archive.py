@@ -11,6 +11,8 @@
 import os
 import sys
 import logging
+import re
+import time
 
 # Allow us to run using installed `libgmail` or the one in parent directory.
 try:
@@ -65,21 +67,23 @@ if __name__ == "__main__":
                     result = ga.getMessagesByLabel(name, True)
 
                 print
-                mbox = []
+                from_re = re.compile('^(>*From )', re.MULTILINE)
                 if len(result):
-                    for thread in result:
-                        print
-                        print thread.id, len(thread), thread.subject
+                    now = time.strftime("%Y-%m-%d_%H.%M.%S")
+                    mbox = open("archive-%s-%s.mbox" % (name, now), "w")
+                    try:
+                        for thread in result:
+                            print
+                            print thread.id, len(thread), thread.subject
 
-                        for msg in thread:
-                            print "  ", msg.id, msg.number, msg.subject
-                            source = msg.source.replace("\r","").lstrip()
-                            mbox.append("From - Thu Jan 22 22:03:29 1998\n")
-                            mbox.append(source)
-                            mbox.append("\n\n") #TODO:Check if we need either/both?
-                    import time 
-                    open("archive-%s-%s.mbox" % (name, time.time()),
-                         "w").writelines(mbox)
+                            for msg in thread:
+                                print "  ", msg.id, msg.number, msg.subject
+                                mbox.write("From - Thu Jan 22 22:03:29 1998\n")
+                                source = msg.source.replace("\r","").lstrip()
+                                mbox.write(from_re.sub('>\\1', source))
+                                mbox.write("\n\n")
+                    finally:
+                        mbox.close()
                 else:
                     print "No threads found in `%s`." % name
                 print
