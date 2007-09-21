@@ -1,3 +1,11 @@
+== Version 0.1.6.1 ==
+libgmail.py
+    * Bugfix for attachment problems --WD--
+      (SF Bug #1793026, Patch #1799605 by 'stephster')
+archive.py
+    * Protect messages with a "from" line in them --WD--
+      (SF Patch #1790809 by 'scop')
+
 == Version 0.1.6.1 == 
 libgmail.py
     * Bugfix for login problems --WD--

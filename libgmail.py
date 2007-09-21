@@ -5,25 +5,12 @@
 ## To get the version number of the available libgmail version.
 ## Reminder: add date before next release. This attribute is also
 ## used in the setup script.
-Version = '0.1.6.1' # (Aug 2007)
+Version = '0.1.6.2' # (Sep 2007)
 
 # Original author: follower@myrealbox.com
 # Maintainers: Waseem (wdaher@mit.edu) and Stas Z (stas@linux.isbeter.nl)
 #
-# Contacts support added by wdaher@mit.edu and Stas Z
-# (with massive initial help from 
-#  Adrian Holovaty's 'gmail.py' 
-#  and the Johnvey Gmail API)
-#
 # License: GPL 2.0
-#
-# Thanks:
-#   * Live HTTP Headers <http://livehttpheaders.mozdev.org/>
-#   * Gmail <http://gmail.google.com/>
-#   * Google Blogoscoped <http://blog.outer-court.com/>
-#   * ClientCookie <http://wwwsearch.sourceforge.net/ClientCookie/>
-#     (There when I needed it...)
-#   * The *first* big G. :-)
 #
 # NOTE:
 #   You should ensure you are permitted to use this script before using it
@@ -300,7 +287,7 @@ class GmailAccount:
         self.domain = domain
         if self.domain:
             URL_LOGIN = "https://www.google.com/a/" + self.domain + "/LoginAction"
-            URL_GMAIL = "http://mail.google.com/a/" + self.domain
+            URL_GMAIL = "http://mail.google.com/a/" + self.domain + "/"
         else:
             URL_LOGIN = GMAIL_URL_LOGIN
             URL_GMAIL = GMAIL_URL_GMAIL
