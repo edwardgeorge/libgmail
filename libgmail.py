@@ -42,6 +42,9 @@ from email.MIMEMultipart import MIMEMultipart
 GMAIL_URL_LOGIN = "https://www.google.com/accounts/ServiceLoginBoxAuth"
 GMAIL_URL_GMAIL = "https://mail.google.com/mail/"
 
+#  Set to any value to use proxy.
+PROXY_URL = None  # e.g. libgmail.PROXY_URL = 'myproxy.org:3128'
+
 # TODO: Get these on the fly?
 STANDARD_FOLDERS = [U_INBOX_SEARCH, U_STARRED_SEARCH,
                     U_ALL_SEARCH, U_DRAFTS_SEARCH,
@@ -295,7 +298,15 @@ class GmailAccount:
             self.name = name
             self._pw = pw
             self._cookieJar = CookieJar()
-            self.opener = urllib2.build_opener(
+
+            if PROXY_URL is not None:
+                import gmail_transport
+
+                self.opener = urllib2.build_opener(gmail_transport.ConnectHTTPHandler(proxy = PROXY_URL),
+                                  gmail_transport.ConnectHTTPSHandler(proxy = PROXY_URL),
+                                  SmartRedirectHandler(self._cookieJar))
+            else:
+                self.opener = urllib2.build_opener(
                                 urllib2.HTTPHandler(debuglevel=0),
                                 urllib2.HTTPSHandler(debuglevel=0),
                                 SmartRedirectHandler(self._cookieJar))
