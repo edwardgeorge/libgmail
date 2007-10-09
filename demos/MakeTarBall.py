@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # make tarball!
-VERSION = '0.1'
+VERSION = '0.3'
 PACKAGENAME = 'libgmail-docs_'
 import os
 

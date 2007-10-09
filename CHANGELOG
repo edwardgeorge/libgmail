@@ -5,7 +5,7 @@ gmail_transport.py
       for passwordless and password-ful proxies 
       (is that a word?), by Jose Rodriguez --WD+SZ--
 
-== Version 0.1.6.1 ==
+== Version 0.1.6.2 ==
 libgmail.py
     * Bugfix for attachment problems --WD--
       (SF Bug #1793026, Patch #1799605 by 'stephster')
