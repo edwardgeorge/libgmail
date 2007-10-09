@@ -1198,7 +1198,22 @@ class GmailContactList:
             if entry.getId() == myId:
                 idList.append(entry)
         return idList
-    
+    def search(self, searchTerm):
+       """
+       This function returns a LIST
+       of GmailContacts whose name or
+       email address matches the 'searchTerm'.
+
+       Returns an empty list if no matches
+       were found.
+       """
+       searchResults = []
+       for entry in self.contactList:
+           p = re.compile(searchTerm, re.IGNORECASE)
+           if p.search(entry.getName()) or p.search(entry.getEmail()):
+               searchResults.append(entry)
+       return searchResults
+   
 class GmailSearchResult:
     """
     """

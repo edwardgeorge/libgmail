@@ -1,3 +1,11 @@
+== Version cvs ==
+libgmail.py
+    * Added 'search' method to contactLists that returns
+      an array of contacts who match a given search term
+      (at some point, the contacts API is long overdue
+       for a revamp, but for now, hey, why not)
+      This is a patch by Alex Chiang     --WD--
+
 == Version 0.1.7 ==
 libgmail.py
 gmail_transport.py
