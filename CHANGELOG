@@ -1,3 +1,10 @@
+== Version 0.1.7 ==
+libgmail.py
+gmail_transport.py
+    * Applied patch that adds proxy support, both 
+      for passwordless and password-ful proxies 
+      (is that a word?), by Jose Rodriguez --WD+SZ--
+
 == Version 0.1.6.1 ==
 libgmail.py
     * Bugfix for attachment problems --WD--
