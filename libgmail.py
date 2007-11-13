@@ -5,7 +5,7 @@
 ## To get the version number of the available libgmail version.
 ## Reminder: add date before next release. This attribute is also
 ## used in the setup script.
-Version = '0.1.7' # (Oct 2007)
+Version = '0.1.8' # (Nov 2007)
 
 # Original author: follower@myrealbox.com
 # Maintainers: Waseem (wdaher@mit.edu) and Stas Z (stas@linux.isbeter.nl)
@@ -40,7 +40,7 @@ from email.MIMEText import MIMEText
 from email.MIMEMultipart import MIMEMultipart
 
 GMAIL_URL_LOGIN = "https://www.google.com/accounts/ServiceLoginBoxAuth"
-GMAIL_URL_GMAIL = "https://mail.google.com/mail/"
+GMAIL_URL_GMAIL = "https://mail.google.com/mail/?ui=1&"
 
 #  Set to any value to use proxy.
 PROXY_URL = None  # e.g. libgmail.PROXY_URL = 'myproxy.org:3128'
@@ -207,7 +207,7 @@ class CookieJar:
 def _buildURL(**kwargs):
     """
     """
-    return "%s?%s" % (URL_GMAIL, urllib.urlencode(kwargs))
+    return "%s%s" % (URL_GMAIL, urllib.urlencode(kwargs))
 
 
 
@@ -290,7 +290,7 @@ class GmailAccount:
         self.domain = domain
         if self.domain:
             URL_LOGIN = "https://www.google.com/a/" + self.domain + "/LoginAction"
-            URL_GMAIL = "http://mail.google.com/a/" + self.domain + "/"
+            URL_GMAIL = "http://mail.google.com/a/" + self.domain + "/?"
         else:
             URL_LOGIN = GMAIL_URL_LOGIN
             URL_GMAIL = GMAIL_URL_GMAIL
