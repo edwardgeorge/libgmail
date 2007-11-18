@@ -1228,7 +1228,8 @@ class GmailSearchResult:
             if not type(threadsInfo[0]) is types.ListType:
                 threadsInfo = [threadsInfo]
         except IndexError:
-            print "No messages found"
+            # print "No messages found"
+            pass            
             
         self._account = account
         self.search = search # TODO: Turn into object + format nicely.
