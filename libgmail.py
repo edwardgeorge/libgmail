@@ -7,7 +7,7 @@
 ## used in the setup script.
 Version = '0.1.8' # (Nov 2007)
 
-# Original author: follower@myrealbox.com
+# Original author: follower@rancidbacon.com
 # Maintainers: Waseem (wdaher@mit.edu) and Stas Z (stas@linux.isbeter.nl)
 #
 # License: GPL 2.0
