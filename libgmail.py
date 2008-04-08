@@ -5,7 +5,7 @@
 ## To get the version number of the available libgmail version.
 ## Reminder: add date before next release. This attribute is also
 ## used in the setup script.
-Version = '0.1.8' # (Nov 2007)
+Version = '0.1.9' # (Apr 2008)
 
 # Original author: follower@rancidbacon.com
 # Maintainers: Waseem (wdaher@mit.edu) and Stas Z (stas@linux.isbeter.nl)
@@ -33,6 +33,7 @@ import urllib
 import urllib2
 import mimetypes
 import types
+import ClientCookie
 from cPickle import load, dump
 
 from email.MIMEBase import MIMEBase
@@ -140,7 +141,7 @@ def _splitBunches(infoItems):# Is this still needed ?? Stas
             result.append(group)
     return result
 
-class SmartRedirectHandler(urllib2.HTTPRedirectHandler):
+class SmartRedirectHandler(ClientCookie.HTTPRedirectHandler):
     def __init__(self, cookiejar):
         self.cookiejar = cookiejar
 
@@ -152,57 +153,10 @@ class SmartRedirectHandler(urllib2.HTTPRedirectHandler):
                             headers.getheader('Location'))
         if new_host:
             req.add_header("Host", new_host.groups()[0])
-        result = urllib2.HTTPRedirectHandler.http_error_302(
+        result = ClientCookie.HTTPRedirectHandler.http_error_302(
             self, req, fp, code, msg, headers)              
         return result
-
-class CookieJar:
-    """
-    A rough cookie handler, intended to only refer to one domain.
-
-    Does no expiry or anything like that.
-
-    (The only reason this is here is so I don't have to require
-    the `ClientCookie` package.)
-    
-    """
-
-    def __init__(self):
-        """
-        """
-        self._cookies = {}
-
-
-    def extractCookies(self, headers, nameFilter = None):
-        """
-        """
-        # TODO: Do this all more nicely?
-        for cookie in headers.getheaders('Set-Cookie'):
-            name, value = (cookie.split("=", 1) + [""])[:2]
-            if LG_DEBUG: print "Extracted cookie `%s`" % (name)
-            if not nameFilter or name in nameFilter:
-                self._cookies[name] = value.split(";")[0]
-                if LG_DEBUG: print "Stored cookie `%s` value `%s`" % (name, self._cookies[name])
-                if self._cookies[name] == "EXPIRED":
-                    if LG_DEBUG:
-                        print "We got an expired cookie: %s:%s, deleting." % (name, self._cookies[name])
-                    del self._cookies[name]
-
-
-    def addCookie(self, name, value):
-        """
-        """
-        self._cookies[name] = value
-
-
-    def setCookies(self, request):
-        """
-        """
-        request.add_header('Cookie',
-                           ";".join(["%s=%s" % (k,v)
-                                     for k,v in self._cookies.items()]))
-
-        
+       
     
 def _buildURL(**kwargs):
     """
@@ -297,18 +251,21 @@ class GmailAccount:
         if name and pw:
             self.name = name
             self._pw = pw
-            self._cookieJar = CookieJar()
 
+            self._cookieJar = ClientCookie.LWPCookieJar()
+            opener = ClientCookie.build_opener(ClientCookie.HTTPCookieProcessor(self._cookieJar))
+            ClientCookie.install_opener(opener)
+            
             if PROXY_URL is not None:
                 import gmail_transport
 
-                self.opener = urllib2.build_opener(gmail_transport.ConnectHTTPHandler(proxy = PROXY_URL),
+                self.opener = ClientCookie.build_opener(gmail_transport.ConnectHTTPHandler(proxy = PROXY_URL),
                                   gmail_transport.ConnectHTTPSHandler(proxy = PROXY_URL),
                                   SmartRedirectHandler(self._cookieJar))
             else:
-                self.opener = urllib2.build_opener(
-                                urllib2.HTTPHandler(debuglevel=0),
-                                urllib2.HTTPSHandler(debuglevel=0),
+                self.opener = ClientCookie.build_opener(
+                                ClientCookie.HTTPHandler(debuglevel=0),
+                                ClientCookie.HTTPSHandler(debuglevel=0),
                                 SmartRedirectHandler(self._cookieJar))
         elif state:
             # TODO: Check for stale state cookies?
@@ -342,7 +299,7 @@ class GmailAccount:
         headers = {'Host': 'www.google.com',
                    'User-Agent': 'Mozilla/5.0 (Compatible; libgmail-python)'}
 
-        req = urllib2.Request(URL_LOGIN, data=data, headers=headers)
+        req = ClientCookie.Request(URL_LOGIN, data=data, headers=headers)
         pageData = self._retrievePage(req)
         
         if not self.domain:
@@ -363,18 +320,25 @@ class GmailAccount:
             # just the cookie that is returned with it.
             pageData = self._retrievePage(redirectURL)
 
+    def getCookie(self,cookiename):
+        # TODO: Is there a way to extract the value directly?
+        for index, cookie in enumerate(self._cookieJar):
+            if cookie.name == cookiename:
+                return cookie.value
+        return ""
+
     def _retrievePage(self, urlOrRequest):
         """
         """
         if self.opener is None:
             raise "Cannot find urlopener"
         
+        # ClientCookieify it, if it hasn't been already
         if not isinstance(urlOrRequest, urllib2.Request):
-            req = urllib2.Request(urlOrRequest)
+            req = ClientCookie.Request(urlOrRequest)
         else:
             req = urlOrRequest
-            
-        self._cookieJar.setCookies(req)
+
         req.add_header('User-Agent',
                        'Mozilla/5.0 (Compatible; libgmail-python)')
         
@@ -385,11 +349,10 @@ class GmailAccount:
             return None
         pageData = resp.read()
 
-        # Extract cookies here
-        self._cookieJar.extractCookies(resp.headers)
+        # TODO: This, for some reason, is still necessary?
+        self._cookieJar.extract_cookies(resp, req)
 
         # TODO: Enable logging of page data for debugging purposes?
-
         return pageData
 
 
@@ -556,10 +519,10 @@ class GmailAccount:
         """
         """
         try:
-            at = self._cookieJar._cookies[ACTION_TOKEN_COOKIE]
+            at = self.getCookie(ACTION_TOKEN_COOKIE)
         except KeyError:
             self.getLabelNames(True) 
-            at = self._cookieJar._cookies[ACTION_TOKEN_COOKIE]           
+            at = self.getCookie(ACTION_TOKEN_COOKIE)
 
         return at
 
@@ -636,7 +599,7 @@ class GmailAccount:
             data = data.replace(FMT_MARKER % k, v)
         ####
         
-        req = urllib2.Request(_buildURL(), data = data)
+        req = ClientCookie.Request(_buildURL(), data = data)
         req.add_header(*contentTypeHeader)
         items = self._parsePage(req)
 
@@ -719,7 +682,7 @@ class GmailAccount:
 
         #data.update(extraData)
 
-        req = urllib2.Request(_buildURL(**params),
+        req = ClientCookie.Request(_buildURL(**params),
                               data = urllib.urlencode(data))
 
         return req
@@ -842,7 +805,7 @@ class GmailAccount:
         myURL = _buildURL(view='up')        
 
         myDataList =  [ ('act','ec'),
-                        ('at', self._cookieJar._cookies['GMAIL_AT']), # Cookie data?
+                        ('at', self.getCookie(ACTION_TOKEN_COOKIE)),
                         ('ct_nm', myContact.getName()),
                         ('ct_em', myContact.getEmail()),
                         ('ct_id', -1 )
@@ -889,8 +852,8 @@ class GmailAccount:
                             myDataList.append( (subsectionenum, info[1]) )
 
         myData = urllib.urlencode(myDataList)
-        request = urllib2.Request(myURL,
-                                  data = myData)
+        request = ClientCookie.Request(myURL,
+                                       data = myData)
         pageData = self._retrievePage(request)
 
         if pageData.find("The contact was successfully added") == -1:
@@ -918,7 +881,7 @@ class GmailAccount:
         Don't call this method.
         You should be using removeContact instead.
         """
-        myURL = _buildURL(search='contacts', ct_id = id, c=id, act='dc', at=self._cookieJar._cookies['GMAIL_AT'], view='up')
+        myURL = _buildURL(search='contacts', ct_id = id, c=id, act='dc', at=self.getCookie(ACTION_TOKEN_COOKIE), view='up')
         pageData = self._retrievePage(myURL)
 
         if pageData.find("The contact has been deleted") == -1:
