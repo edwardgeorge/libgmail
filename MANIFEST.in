@@ -1,0 +1,7 @@
+include COPYING
+include README
+include CHANGELOG
+include gmail_transport.py
+include lgconstants.py
+include libgmail.py
+include setup.py
