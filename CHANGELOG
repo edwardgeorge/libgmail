@@ -1,3 +1,12 @@
+== Version 0.1.9 ==
+libgmail.py
+    * Fixed login that was broken for a bunch of new
+      gmail accounts, thanks to a patch by rhauer
+
+NOTE: libgmail now depends on ClientCookie, which
+can be downloaded from: 
+  http://wwwsearch.sourceforge.net/ClientCookie/#download
+
 == Version 0.1.8 ==
 libgmail.py
     * Added 'search' method to contactLists that returns
