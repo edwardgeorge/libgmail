@@ -243,8 +243,9 @@ class GmailAccount:
         """
         self.domain = domain
         if self.domain:
-            URL_LOGIN = "https://www.google.com/a/" + self.domain + "/LoginAction"
-            URL_GMAIL = "http://mail.google.com/a/" + self.domain + "/?"
+            URL_LOGIN = "https://www.google.com/a/" + self.domain + "/LoginAction2"
+            URL_GMAIL = "http://mail.google.com/a/" + self.domain + "/?ui=1&"
+
         else:
             URL_LOGIN = GMAIL_URL_LOGIN
             URL_GMAIL = GMAIL_URL_GMAIL
@@ -287,8 +288,8 @@ class GmailAccount:
             data = urllib.urlencode({'continue': URL_GMAIL,
                                      'at'      : 'null',
                                      'service' : 'mail',
-                                     'userName': self.name,
-                                     'password': self._pw,
+                                     'Email': self.name,
+                                     'Passwd': self._pw,
                                      })
         else:
             data = urllib.urlencode({'continue': URL_GMAIL,
