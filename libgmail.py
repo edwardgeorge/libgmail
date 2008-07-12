@@ -33,7 +33,7 @@ import urllib
 import urllib2
 import mimetypes
 import types
-import ClientCookie
+import mechanize as ClientCookie
 from cPickle import load, dump
 
 from email.MIMEBase import MIMEBase
@@ -265,8 +265,8 @@ class GmailAccount:
                                   SmartRedirectHandler(self._cookieJar))
             else:
                 self.opener = ClientCookie.build_opener(
-                                ClientCookie.HTTPHandler(debuglevel=0),
-                                ClientCookie.HTTPSHandler(debuglevel=0),
+                                ClientCookie.HTTPHandler(),
+                                ClientCookie.HTTPSHandler(),
                                 SmartRedirectHandler(self._cookieJar))
         elif state:
             # TODO: Check for stale state cookies?
