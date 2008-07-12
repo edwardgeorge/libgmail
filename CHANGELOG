@@ -1,3 +1,18 @@
+== Version 0.1.10 == 
+libgmail.py
+   * Use mechanize instead of ClientCookie [Patch #2014779]
+   * Very basic Unicode support [Patch #1926861]
+
+gmail_transport.py 
+   * New version that uses mechanize
+     (owing again to Jose Rodriguez)
+
+NOTE: libgmail now depends on mecahnize, which
+can be downloaded from:
+  http://wwwsearch.sourceforge.net/mechanize/#download
+  (in Debian/Ubuntu as python-mechanize, and an easy_install
+   installer is also available)
+
 == Version 0.1.9 ==
 libgmail.py
     * Fixed login that was broken for a bunch of new
