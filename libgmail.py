@@ -75,7 +75,7 @@ class GmailError(Exception):
 
 class GmailSendError(Exception):
     '''
-    Exception to throw if we're unable to send a message
+    Exception to throw if we are unable to send a message
     '''
     pass
 
@@ -88,6 +88,7 @@ def _parsePage(pageContent):
     lines = pageContent.splitlines()
     data = '\n'.join([x for x in lines if x and x[0] in ['D', ')', ',', ']']])
     #data = data.replace(',,',',').replace(',,',',')
+    data = re.sub(r'("(?:[^\\"]|\\.)*")', r'u\1', data)
     data = re.sub(',{2,}', ',', data)
     
     result = []
@@ -354,7 +355,7 @@ class GmailAccount:
         self._cookieJar.extract_cookies(resp, req)
 
         # TODO: Enable logging of page data for debugging purposes?
-        return pageData
+        return pageData.decode('utf-8')
 
 
     def _parsePage(self, urlOrRequest):
