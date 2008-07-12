@@ -8,10 +8,10 @@
 # ----------------------------------------------------------------------------------
 
 
-# urllib2 opener to connection through a proxy using the CONNECT method, (useful for SSL)
+# ClientCookie to connection through a proxy using the CONNECT method, (useful for SSL)
 # tested with python 2.4
 
-import urllib2
+import mechanize as ClientCookie
 import urllib
 import httplib
 import socket
@@ -116,29 +116,28 @@ class ProxyHTTPSConnection(ProxyHTTPConnection):
 		self.sock = httplib.FakeSocket(self.sock, ssl)
 
 		
+class ConnectHTTPHandler(ClientCookie.HTTPHandler):
 
-class ConnectHTTPHandler(urllib2.HTTPHandler):
-   
 	def __init__(self, proxy=None, debuglevel=0):
 		self.proxy, self.proxy_user, self.proxy_passwd = split_proxy_URL(proxy)
-		urllib2.HTTPHandler.__init__(self, debuglevel)
+		ClientCookie.HTTPHandler.__init__(self, debuglevel)
 
 	def do_open(self, http_class, req):
 		if self.proxy is not None:
 			req.set_proxy(self.proxy, 'http')
-		return urllib2.HTTPHandler.do_open(self, ProxyHTTPConnection.new_auth(self.proxy, self.proxy_user, self.proxy_passwd), req)
+		return ClientCookie.HTTPHandler.do_open(self, ProxyHTTPConnection.new_auth(self.proxy, self.proxy_user, self.proxy_passwd), req)
 	
 
 
-class ConnectHTTPSHandler(urllib2.HTTPSHandler):
+class ConnectHTTPSHandler(ClientCookie.HTTPSHandler):
 
 	def __init__(self, proxy=None, debuglevel=0):
 		self.proxy, self.proxy_user, self.proxy_passwd = split_proxy_URL(proxy)
-		urllib2.HTTPSHandler.__init__(self, debuglevel)
+		ClientCookie.HTTPSHandler.__init__(self, debuglevel)
 
 	def do_open(self, http_class, req):
 		if self.proxy is not None:
 			req.set_proxy(self.proxy, 'https')
-		return urllib2.HTTPSHandler.do_open(self, ProxyHTTPSConnection.new_auth(self.proxy, self.proxy_user, self.proxy_passwd), req)
+		return ClientCookie.HTTPSHandler.do_open(self, ProxyHTTPSConnection.new_auth(self.proxy, self.proxy_user, self.proxy_passwd), req)
 
 
