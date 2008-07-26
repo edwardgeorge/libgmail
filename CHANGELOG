@@ -7,7 +7,7 @@ gmail_transport.py
    * New version that uses mechanize
      (owing again to Jose Rodriguez)
 
-NOTE: libgmail now depends on mecahnize, which
+NOTE: libgmail now depends on mechanize, which
 can be downloaded from:
   http://wwwsearch.sourceforge.net/mechanize/#download
   (in Debian/Ubuntu as python-mechanize, and an easy_install
