@@ -6,7 +6,7 @@
 # To install to your system; python setup.py install
 import libgmail
 from distutils.core import setup
-mods = ['libgmail','lgconstants']
+mods = ['libgmail','lgconstants','gmail_transport']
 setup (name = "libgmail",
        version = "%s" % libgmail.Version,
        description = "python bindings to access Gmail",
