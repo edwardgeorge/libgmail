@@ -1443,7 +1443,8 @@ class GmailMessage(object):
         self._parent = parent
         self._account = self._parent._account
         
-        self.author = msgData[MI_AUTHORFIRSTNAME]
+        self.author = msgData[MI_AUTHORNAME]
+        self.author_firstname = msgData[MI_AUTHORFIRSTNAME]
         self.id = msgData[MI_MSGID]
         self.number = msgData[MI_NUM]
         self.subject = msgData[MI_SUBJECT]
