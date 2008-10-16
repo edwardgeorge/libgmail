@@ -1406,7 +1406,6 @@ class GmailThread(_LabelHandlerMixin):
                 for msg in msgsInfo:
                     result += [GmailMessage(thread, msg, isDraft = isDraft)]
                            
-
         return result
 
 class GmailMessageStub(_LabelHandlerMixin):
@@ -1453,8 +1452,14 @@ class GmailMessage(object):
         self.bcc = msgData[MI_BCC]
         self.sender = msgData[MI_AUTHOREMAIL]
         
-        self.attachments = [GmailAttachment(self, attachmentInfo)
-                            for attachmentInfo in msgData[MI_ATTACHINFO]]
+        # Messages created by google chat (from reply with chat, etc.)
+        # don't have any attachments, so we need this check not to choke
+        # on them
+        try:
+            self.attachments = [GmailAttachment(self, attachmentInfo)
+                    for attachmentInfo in msgData[MI_ATTACHINFO]]
+        except TypeError:
+            self.attachments = []
 
         # TODO: Populate additional fields & cache...(?)
 
