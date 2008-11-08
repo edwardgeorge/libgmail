@@ -1,3 +1,9 @@
+== Version 0.1.11 ==
+libgmail.py 
+   * Fixed bug that broke attachment support (SF bug #2034927)
+   * added .author_fullname field for messages
+   * Don't crash on threads with google chat log (Debian bug #502458)
+
 == Version 0.1.10 == 
 libgmail.py
    * Use mechanize instead of ClientCookie [Patch #2014779]
