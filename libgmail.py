@@ -1441,15 +1441,15 @@ class GmailMessage(object):
         self._parent = parent
         self._account = self._parent._account
         
-        self.author = msgData[MI_AUTHORNAME]
-        self.author_firstname = msgData[MI_AUTHORFIRSTNAME]
+        self.author = msgData[MI_AUTHORFIRSTNAME].decode('utf-8')
+        self.author_fullname = msgData[MI_AUTHORNAME].decode('utf-8')
         self.id = msgData[MI_MSGID]
         self.number = msgData[MI_NUM]
-        self.subject = msgData[MI_SUBJECT]
-        self.to = msgData[MI_TO]
-        self.cc = msgData[MI_CC]
-        self.bcc = msgData[MI_BCC]
-        self.sender = msgData[MI_AUTHOREMAIL]
+        self.subject = msgData[MI_SUBJECT].decode('utf-8')
+        self.to = [x.decode('utf-8') for x in msgData[MI_TO]]
+        self.cc = [x.decode('utf-8') for x in msgData[MI_CC]]
+        self.bcc = [x.decode('utf-8') for x in msgData[MI_BCC]]
+        self.sender = msgData[MI_AUTHOREMAIL].decode('utf-8')
         
         # Messages created by google chat (from reply with chat, etc.)
         # don't have any attachments, so we need this check not to choke
@@ -1477,7 +1477,7 @@ class GmailMessage(object):
             #       to make it legal as per RFC?
             self._source = self._account.getRawMessage(self.id)
 
-        return self._source
+        return self._source.decode('utf-8')
 
     source = property(_getSource, doc = "")
         
