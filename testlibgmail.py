@@ -20,6 +20,14 @@ class LibgmailTests(unittest.TestCase):
     def tearDown(self):
         pass
 
+    def test_utf8(self):
+        f = account.getMessagesByFolder(U_INBOX_SEARCH, True)
+        for t in f:
+            for m in t:
+                w = m.source
+                for attach in m.attachments:
+                    a = attach.content
+
     def test_send_and_receive_mail(self):
         if account.domain:
             name = account.name + '@' + account.domain

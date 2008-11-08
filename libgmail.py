@@ -355,8 +355,7 @@ class GmailAccount:
         self._cookieJar.extract_cookies(resp, req)
 
         # TODO: Enable logging of page data for debugging purposes?
-        return pageData.decode('utf-8')
-
+        return pageData
 
     def _parsePage(self, urlOrRequest):
         """
