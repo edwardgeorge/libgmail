@@ -65,6 +65,17 @@ versionWarned = False # If the Javascript version is different have we
 
 RE_SPLIT_PAGE_CONTENT = re.compile("D\((.*?)\);", re.DOTALL)
 
+def to_unicode(xstr):
+    '''
+    Forces string to unicode
+    '''
+    if type(xstr) == unicode:
+        return xstr
+    elif type(xstr) == str:
+        return xstr.decode('utf-8')
+    else:
+        return xstr
+
 class GmailError(Exception):
     '''
     Exception thrown upon gmail-specific failures, in particular a
@@ -1441,15 +1452,15 @@ class GmailMessage(object):
         self._parent = parent
         self._account = self._parent._account
         
-        self.author = msgData[MI_AUTHORFIRSTNAME].decode('utf-8')
-        self.author_fullname = msgData[MI_AUTHORNAME].decode('utf-8')
+        self.author = to_unicode(msgData[MI_AUTHORFIRSTNAME])
+        self.author_fullname = to_unicode(msgData[MI_AUTHORNAME])
         self.id = msgData[MI_MSGID]
         self.number = msgData[MI_NUM]
-        self.subject = msgData[MI_SUBJECT].decode('utf-8')
-        self.to = [x.decode('utf-8') for x in msgData[MI_TO]]
-        self.cc = [x.decode('utf-8') for x in msgData[MI_CC]]
-        self.bcc = [x.decode('utf-8') for x in msgData[MI_BCC]]
-        self.sender = msgData[MI_AUTHOREMAIL].decode('utf-8')
+        self.subject = to_unicode(msgData[MI_SUBJECT])
+        self.to = [to_unicode(x) for x in msgData[MI_TO]]
+        self.cc = [to_unicode(x) for x in msgData[MI_CC]]
+        self.bcc = [to_unicode(x) for x in msgData[MI_BCC]]
+        self.sender = to_unicode(msgData[MI_AUTHOREMAIL])
         
         # Messages created by google chat (from reply with chat, etc.)
         # don't have any attachments, so we need this check not to choke
@@ -1477,7 +1488,7 @@ class GmailMessage(object):
             #       to make it legal as per RFC?
             self._source = self._account.getRawMessage(self.id)
 
-        return self._source.decode('utf-8')
+        return to_unicode(self._source)
 
     source = property(_getSource, doc = "")
         

@@ -1,3 +1,8 @@
+== CVS ==
+libgmail.py
+   * Unicode handling fix (SF bug #2643866),
+     patch by SF user lejordet
+
 == Version 0.1.11 ==
 libgmail.py 
    * Fixed bug that broke attachment support (SF bug #2034927)
