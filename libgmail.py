@@ -297,21 +297,28 @@ class GmailAccount:
         """
         # TODO: Throw exception if we were instantiated with state?
         if self.domain:
-            data = urllib.urlencode({'continue': URL_GMAIL,
+            data_map = {'continue': URL_GMAIL,
                                      'at'      : 'null',
                                      'service' : 'mail',
                                      'Email': self.name,
                                      'Passwd': self._pw,
-                                     })
+                                     }
         else:
-            data = urllib.urlencode({'continue': URL_GMAIL,
+            data_map = {'continue': URL_GMAIL,
                                      'Email': self.name,
                                      'Passwd': self._pw,
-                                     })
+                                     }
                                            
         headers = {'Host': 'www.google.com',
                    'User-Agent': 'Mozilla/5.0 (Compatible; libgmail-python)'}
 
+        data = urllib.urlencode(data_map)
+        req = ClientCookie.Request(URL_LOGIN, data=data, headers=headers)
+        pageData = self._retrievePage(req)
+
+        # We need to re-fetch the page with the proper GALX value.
+        data_map['GALX'] = self.getCookie('GALX')
+        data = urllib.urlencode(data_map)
         req = ClientCookie.Request(URL_LOGIN, data=data, headers=headers)
         pageData = self._retrievePage(req)
         

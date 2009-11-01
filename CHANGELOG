@@ -2,6 +2,8 @@
 libgmail.py
    * Unicode handling fix (SF bug #2643866),
      patch by SF user lejordet
+   * Retore libgmail functionality (SF bug #2871172, SF patch #2879938)
+     patch by 'nobody', SF user Mihkel
 
 == Version 0.1.11 ==
 libgmail.py 
