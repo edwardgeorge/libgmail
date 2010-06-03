@@ -354,7 +354,8 @@ class GmailAccount:
             raise "Cannot find urlopener"
         
         # ClientCookieify it, if it hasn't been already
-        if not isinstance(urlOrRequest, urllib2.Request):
+        if not isinstance(urlOrRequest, (urllib2.Request,
+                                         ClientCookie.Request)):
             req = ClientCookie.Request(urlOrRequest)
         else:
             req = urlOrRequest
